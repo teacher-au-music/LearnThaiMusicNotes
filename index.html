@@ -7,6 +7,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai+Looped:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
     <style>
         :root {
             --primary-blue: #a3c4f3;
@@ -30,7 +31,7 @@
             --color-sol-high: #8c9eff;
         }
 
-        /* 💡 Desktop Fix: สั่งห้ามคลุมดำข้อความทั้งหน้าเว็บ 100% แก้บั๊กลากติดข้อความบน Mac/PC */
+        /* 💡 ปิดระบบคลุมดำข้อความทั้งหน้าเว็บ 100% แก้บั๊กลากติดข้อความบน Mac/PC และ iPad */
         * {
             -webkit-touch-callout: none;
             -webkit-user-select: none;
@@ -38,6 +39,15 @@
             -moz-user-select: none;
             -ms-user-select: none;
             user-select: none;
+        }
+
+        /* อนุญาตให้พิมพ์หรือคลิกปุ่มต่างๆ ได้ตามปกติ */
+        input, select, option, button {
+            -webkit-user-select: auto;
+            -khtml-user-select: auto;
+            -moz-user-select: auto;
+            -ms-user-select: auto;
+            user-select: auto;
         }
 
         body {
@@ -48,9 +58,10 @@
             padding: 0;
             text-align: center;
             overflow-x: hidden; 
-            min-width: 1400px; 
+            min-width: 1400px; /* บังคับหน้าจอกว้าง 1400px กันขอบแหว่ง */
         }
 
+        /* 💡 1. พื้นหลังหยดสี (Radial Gradient - ไม่กินสเปค GPU) */
         .bg-blobs {
             position: fixed;
             top: 0; left: 0; width: 100%; height: 100%;
@@ -73,6 +84,7 @@
             100% { transform: translate(30px, 40px) scale(1.1); }
         }
 
+        /* 💡 2. ส่วนหัว (Header) - กล่องแคปซูล Liquid Glass */
         header {
             background: rgba(255, 255, 255, 0.25); 
             backdrop-filter: blur(25px); 
@@ -202,6 +214,7 @@
             text-align: center;
         }
 
+        /* แผงพาเลตและแผงควบคุม (กระจกฝ้าสีขาว) */
         .note-palette {
             margin: 40px auto;
             max-width: 800px;
@@ -414,20 +427,21 @@
             margin-right: 2px;
         }
 
+        /* 💡 3. ลายน้ำเครดิตผู้พัฒนา (ล่างสุด คลุมดำไม่ได้ จับต้องไม่ได้) */
         .watermark-footer {
             margin-top: 60px;
             padding-bottom: 40px;
             text-align: center;
-            color: #8faadc; /* สีฟ้าหม่นๆ ให้ดูกลืนไปกับแบล็คกราวด์ */
+            color: #8faadc; 
             font-size: 15px;
             font-weight: 500;
-            opacity: 0.6; /* ปรับความโปร่งแสงให้ดูเหมือนลายน้ำ */
-            pointer-events: none; /* 💡 พระเอกของเรา: ทำให้เมาส์ทะลุผ่าน จับต้องไม่ได้เลย */
+            opacity: 0.6; 
+            pointer-events: none; /* ทำให้เมาส์ทะลุผ่าน จับต้องไม่ได้เลย */
             user-select: none;
             letter-spacing: 0.5px;
             line-height: 1.6;
         }
-        
+
     </style>
 </head>
 <body>
@@ -441,7 +455,7 @@
     <header>โน้ตเพลงไทย..สไตล์เรา</header>
 
     <div class="staff-lines" id="staff-container">
-    </div>
+        </div>
 
     <div class="add-line-container">
         <button class="action-btn glass-btn" id="add-line-btn" style="margin: 0 auto;">
@@ -508,20 +522,18 @@
                 ลบโน้ตทั้งหมด
             </button>
         </div>
+    </div>
 
-        <div class="watermark-footer">
+    <div class="watermark-footer">
         พัฒนาและออกแบบโดย <strong>อาจารย์อู๋</strong> (Teacher Au)<br>
         เพื่อการศึกษาและเป็นสื่อการเรียนการสอนดนตรีไทย<br>
         © 2026 All Rights Reserved.
     </div>
 
     <script>
-    // ... โค้ด Javascript เดิม ...
-    </div>
-
-    <script>
         // =========================================================================
-        // ระบบลากวาง (Touch & Mouse Events Custom Engine)
+        // 💡 ระบบลากวางตัวใหม่ (Touch & Mouse Events Custom Engine)
+        // รองรับ Safari/Chrome/iPad/Desktop ลื่นไหล 100% แก้บั๊กคลุมดำและวางไม่ลง
         // =========================================================================
         let isDraggingNote = false;
         let dragGhost = null;
@@ -537,16 +549,19 @@
         }
 
         function handleDragStart(e) {
+            // รับเฉพาะคลิกซ้ายหรือการแตะหน้าจอ
             if (e.button !== undefined && e.button !== 0) return; 
 
             const noteElement = e.target.closest('.note');
+            
+            // ถ้านิ้วจิ้มโดนช่องว่างๆ ในห้องเพลง ให้เคลียร์โน้ตทิ้ง
             if (!noteElement) {
                 const slot = e.target.closest('.note-slot');
                 if (slot && slot.innerHTML !== '') slot.innerHTML = '';
                 return;
             }
 
-            // 💡 Desktop Fix: สั่ง e.preventDefault() เพื่อตัดวงจรการเริ่มคลุมดำของเมาส์บนคอมพิวเตอร์
+            // ตัดระบบลากคลุมดำของ Desktop ทิ้ง
             if (e.type === 'mousedown') {
                 e.preventDefault();
             }
@@ -590,6 +605,7 @@
             if (!dragGhost) return;
             const pos = getPointerPos(e);
 
+            // เช็คว่านิ้วขยับเกิดระยะหรือยัง
             if (!isDraggingNote) {
                 const dx = Math.abs(pos.x - startX);
                 const dy = Math.abs(pos.y - startY);
@@ -604,6 +620,7 @@
             }
 
             if (isDraggingNote) {
+                // บล็อกไม่ให้หน้าจอเลื่อนเวลาลากโน้ต
                 if (e.cancelable !== false) e.preventDefault(); 
                 
                 dragGhost.style.left = pos.x + 'px';
@@ -678,6 +695,7 @@
 
         const staffContainer = document.getElementById('staff-container');
         const addLineBtn = document.getElementById('add-line-btn');
+        
         const playIcon = `<svg class="icon-svg" viewBox="0 0 24 24" fill="currentColor" stroke="none"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>`;
         const pauseIcon = `<svg class="icon-svg" viewBox="0 0 24 24" fill="currentColor" stroke="none"><rect x="6" y="4" width="4" height="16"></rect><rect x="14" y="4" width="4" height="16"></rect></svg>`;
         const removeLineIcon = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line></svg>`;
