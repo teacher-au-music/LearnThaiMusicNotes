@@ -2,11 +2,17 @@
 <html lang="th">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- 💡 ปรับ Viewport เป็นความกว้างคงที่ 1200px เพื่อให้ย่อพอดีจอ iPhone/iPad ทันที และถ่างนิ้วซูมได้ -->
+    <meta name="viewport" content="width=1200">
     <title>เรียนโน้ตดนตรีไทยกับอาจารย์อู๋</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai+Looped:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- นำเข้า Mobile Drag & Drop Polyfill เพื่อให้รองรับการลากบนหน้าจอสัมผัส -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/mobile-drag-drop@2.3.0-rc.2/default.css">
+    <script src="https://cdn.jsdelivr.net/npm/mobile-drag-drop@2.3.0-rc.2/index.min.js"></script>
+
     <style>
         :root {
             --primary-blue: #a3c4f3;
@@ -30,6 +36,25 @@
             --color-sol-high: #8c9eff;
         }
 
+        /* 💡 ป้องกันการคลุมดำข้อความและเมนูเด้งเวลากดค้างบนมือถือและ iPad แบบ 100% */
+        * {
+            -webkit-touch-callout: none;
+            -webkit-user-select: none;
+            -khtml-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
+            user-select: none;
+        }
+
+        /* 💡 อนุญาตให้คลิกปุ่มและช่องเลือกได้ตามปกติ */
+        input, select, option, button {
+            -webkit-user-select: auto;
+            -khtml-user-select: auto;
+            -moz-user-select: auto;
+            -ms-user-select: auto;
+            user-select: auto;
+        }
+
         body {
             font-family: 'IBM Plex Sans Thai Looped', sans-serif;
             background-color: var(--bg-color);
@@ -40,7 +65,6 @@
             overflow-x: hidden; 
         }
 
-        /* 💡 1. พื้นหลังหยดสี (Radial Gradient) */
         .bg-blobs {
             position: fixed;
             top: 0; left: 0; width: 100%; height: 100%;
@@ -64,17 +88,11 @@
         }
 
         header {
-            /* ปรับความโปร่งแสงให้ใสขึ้น และเพิ่มความเบลอให้ฟุ้งกระจาย */
             background: rgba(255, 255, 255, 0.25); 
             backdrop-filter: blur(25px); 
             -webkit-backdrop-filter: blur(25px);
-            
-            /* สร้างขอบใสแบบกระจก (Inner Border) */
             border: 1px solid rgba(255, 255, 255, 0.4); 
-            
-            /* เพิ่มเงาที่ซับซ้อนให้ดู "ลอย" จากหน้าจอ */
             box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.15);
-            
             color: #3a86ff;
             padding: 12px 40px;
             font-size: 1.5em;
@@ -85,8 +103,6 @@
             width: fit-content;
             margin: 20px auto 40px auto;
             border-radius: 50px;
-            
-            /* เพิ่มความใสตัวอักษรให้ดูเป็นเนื้อเดียวกัน */
             letter-spacing: 0.5px;
             text-shadow: 0 0 10px rgba(255, 255, 255, 0.3);
         }
@@ -123,7 +139,6 @@
             margin-right: 10px; 
         }
 
-        /* ห้องเพลงสีขาวทึบแสง */
         .measure {
             display: flex;
             background-color: #ffffff; 
@@ -202,7 +217,6 @@
             text-align: center;
         }
 
-        /* 💡 3. แผงพาเลตและคอนโทรล */
         .note-palette {
             margin: 40px auto;
             max-width: 800px;
@@ -244,7 +258,9 @@
             box-shadow: 0 4px 10px rgba(0,0,0,0.1);
             cursor: grab;
             transition: transform 0.1s, box-shadow 0.1s; 
-            user-select: none; 
+            
+            /* 💡 พระเอกของการสัมผัส: ล็อกพฤติกรรมบนมือถือให้เป็นการลากเท่านั้น */
+            -webkit-user-drag: element;
             touch-action: none; 
             will-change: transform; 
         }
@@ -499,6 +515,12 @@
     </div>
 
     <script>
+        // 💡 ตั้งค่า Polyfill ให้ลากติดนิ้วทันที ไม่มี Delay (holdToDrag: 0)
+        MobileDragDrop.polyfill({
+            holdToDrag: 0,
+            dragImageTranslateOverride: MobileDragDrop.scrollBehaviourDragImageTranslateOverride
+        });
+
         const staffContainer = document.getElementById('staff-container');
         const addLineBtn = document.getElementById('add-line-btn');
         let isDraggingNote = false; 
