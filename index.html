@@ -2,7 +2,7 @@
 <html lang="th">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=1350, user-scalable=yes">
+    <meta name="viewport" content="width=1400, user-scalable=yes">
     <title>เรียนโน้ตดนตรีไทยกับอาจารย์อู๋</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -34,7 +34,7 @@
             --color-sol-high: #8c9eff;
         }
 
-        /* 💡 ปิดระบบการคลุมดำ การโชว์แว่นขยาย และการแตะค้างบน iOS แบบเด็ดขาด */
+        /* ป้องกันการคลุมดำข้อความเวลาจิ้มบน iPad/iPhone */
         * {
             -webkit-touch-callout: none;
             -webkit-user-select: none;
@@ -44,7 +44,7 @@
             user-select: none;
         }
 
-        /* อนุญาตให้พิมพ์หรือคลิกปุ่มได้ปกติ */
+        /* อนุญาตให้พิมพ์หรือคลิกปุ่มต่างๆ ได้ตามปกติ */
         input, select, option, button {
             -webkit-user-select: auto;
             -khtml-user-select: auto;
@@ -60,7 +60,9 @@
             margin: 0;
             padding: 0;
             text-align: center;
-            /* 💡 เอา overflow-x: hidden ออกไปแล้ว ขอบซ้าย-ขวาจะไม่แหว่งอีกต่อไป */
+            overflow-x: hidden; 
+            /* 💡 บังคับเนื้อหาทั้งหมดกว้าง 1400px เพื่อกันขอบแหว่ง */
+            min-width: 1400px;
         }
 
         .bg-blobs {
@@ -110,8 +112,7 @@
             display: flex;
             flex-direction: column;
             gap: 40px; 
-            width: 98%; 
-            max-width: 1300px; 
+            width: 100%; 
             align-items: center;
         }
 
@@ -257,7 +258,7 @@
             cursor: grab;
             transition: transform 0.1s, box-shadow 0.1s; 
             
-            /* 💡 บังคับให้เบราว์เซอร์รับรู้ว่าชิ้นนี้มีไว้ "ลาก" เท่านั้น ไม่ต้องหน่วงเวลา */
+            /* 💡 บังคับให้เบราว์เซอร์ลากอย่างเดียว ห้ามเลื่อนจอเวลายืนบนตัวโน้ต */
             -webkit-user-drag: element;
             touch-action: none; 
             will-change: transform; 
@@ -513,18 +514,15 @@
     </div>
 
     <script>
-        // 💡 1. ปรับแต่ง Polyfill ให้ติดนิ้ว 0ms ทันที และให้โน้ตลอยตรงกลางนิ้วมือเวลาลาก
+        // 💡 1. พระเอกของการลากติดนิ้ว: เปิดบังคับ Force Apply ปิดระบบลากดั้งเดิมของ Apple ทิ้งไปเลย!
         MobileDragDrop.polyfill({
+            forceApply: true, 
             holdToDrag: 0, 
             dragImageCenterOnTouch: true 
         });
 
-        // 💡 2. ตัดระบบคลุมดำเมนูบน iOS ทิ้ง ป้องกันการกวนใจขณะลากโน้ต
-        window.oncontextmenu = function(event) {
-            event.preventDefault();
-            event.stopPropagation();
-            return false;
-        };
+        // ล็อกไม่ให้หน้าจอขยับตอนกำลังลาก
+        window.addEventListener('touchmove', function() {}, {passive: false});
 
         const staffContainer = document.getElementById('staff-container');
         const addLineBtn = document.getElementById('add-line-btn');
