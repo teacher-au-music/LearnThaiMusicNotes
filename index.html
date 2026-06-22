@@ -31,7 +31,7 @@
             --color-sol-high: #8c9eff;
         }
 
-        /* 💡 Desktop Fix: สั่งห้ามคลุมดำข้อความทั้งหน้าเว็บ 100% แก้บั๊กลากติดข้อความบน Mac/PC และ iPad */
+        /* ปิดระบบคลุมดำข้อความทั้งหน้าเว็บ แก้บั๊กลากติดข้อความบน Mac/PC และ iPad */
         * {
             -webkit-touch-callout: none;
             -webkit-user-select: none;
@@ -58,10 +58,10 @@
             padding: 0;
             text-align: center;
             overflow-x: hidden; 
-            min-width: 1400px; /* บังคับหน้าจอกว้าง 1400px กันขอบแหว่ง */
+            min-width: 1400px; 
         }
 
-        /* 💡 1. พื้นหลังหยดสี (Radial Gradient - ไม่กินสเปค GPU) */
+        /* พื้นหลังหยดสี */
         .bg-blobs {
             position: fixed;
             top: 0; left: 0; width: 100%; height: 100%;
@@ -84,7 +84,7 @@
             100% { transform: translate(30px, 40px) scale(1.1); }
         }
 
-        /* 💡 2. ส่วนหัว (Header) - กล่องแคปซูล Liquid Glass */
+        /* ส่วนหัว */
         header {
             background: rgba(255, 255, 255, 0.25); 
             backdrop-filter: blur(25px); 
@@ -214,7 +214,6 @@
             text-align: center;
         }
 
-        /* แผงพาเลตและแผงควบคุม (กระจกฝ้าสีขาว) */
         .note-palette {
             margin: 40px auto;
             max-width: 800px;
@@ -427,7 +426,6 @@
             margin-right: 2px;
         }
 
-        /* 💡 3. ลายน้ำเครดิตผู้พัฒนา (ล่างสุด คลุมดำไม่ได้ จับต้องไม่ได้) */
         .watermark-footer {
             margin-top: 60px;
             padding-bottom: 40px;
@@ -436,7 +434,7 @@
             font-size: 15px;
             font-weight: 500;
             opacity: 0.6; 
-            pointer-events: none; /* ทำให้เมาส์ทะลุผ่าน จับต้องไม่ได้เลย */
+            pointer-events: none; 
             user-select: none;
             letter-spacing: 0.5px;
             line-height: 1.6;
@@ -532,8 +530,68 @@
 
     <script>
         // =========================================================================
+        // 💾 ระบบ Local Storage - จำโน้ตอัตโนมัติแม้จะรีเฟรชหรือปิดเว็บ
+        // =========================================================================
+        function saveToStorage() {
+            const lines = [];
+            document.querySelectorAll('.staff-line').forEach(line => {
+                const slotsData = [];
+                line.querySelectorAll('.note-slot').forEach(slot => {
+                    const noteEl = slot.querySelector('.note');
+                    if (noteEl) {
+                        slotsData.push({
+                            note: noteEl.getAttribute('data-note'),
+                            color: noteEl.getAttribute('data-color')
+                        });
+                    } else {
+                        slotsData.push(null);
+                    }
+                });
+                lines.push(slotsData);
+            });
+            localStorage.setItem('thaiMusicNotesData', JSON.stringify(lines));
+        }
+
+        function loadFromStorage() {
+            const data = localStorage.getItem('thaiMusicNotesData');
+            if (data) {
+                try {
+                    const lines = JSON.parse(data);
+                    if (lines.length === 0) {
+                        createLine(); createLine(); return;
+                    }
+                    lines.forEach(slotsData => {
+                        createLine(); // สร้างบรรทัดขึ้นมาก่อน
+                        const currentLine = staffContainer.lastElementChild;
+                        const slots = currentLine.querySelectorAll('.note-slot');
+                        // หยอดโน้ตลงกล่องตามที่เซฟไว้
+                        slotsData.forEach((noteData, index) => {
+                            if (noteData && slots[index]) {
+                                const newNote = document.createElement('div');
+                                newNote.className = `note ${noteData.color}`;
+                                newNote.innerText = noteData.note;
+                                newNote.setAttribute('data-note', noteData.note);
+                                newNote.setAttribute('data-color', noteData.color);
+                                newNote.style.width = '100%';
+                                newNote.style.height = '100%';
+                                newNote.style.boxShadow = 'none';
+                                newNote.style.borderRadius = '4px';
+                                slots[index].appendChild(newNote);
+                            }
+                        });
+                    });
+                } catch(e) {
+                    console.error("Storage error:", e);
+                    createLine(); createLine();
+                }
+            } else {
+                createLine();
+                createLine();
+            }
+        }
+
+        // =========================================================================
         // 💡 ระบบลากวางตัวใหม่ (Touch & Mouse Events Custom Engine)
-        // รองรับ Safari/Chrome/iPad/Desktop ลื่นไหล 100% แก้บั๊กคลุมดำและวางไม่ลง
         // =========================================================================
         let isDraggingNote = false;
         let dragGhost = null;
@@ -548,7 +606,6 @@
             return { x: e.clientX, y: e.clientY };
         }
 
-        // 💡 ฟังก์ชันพรีวิวระดับเสียงเมื่อผู้เรียนจิ้ม/คลิกเลือกโน้ตในกล่องรวม
         async function previewNoteSound(noteText) {
             if (!audioCtx) {
                 window.AudioContext = window.AudioContext || window.webkitAudioContext;
@@ -560,7 +617,6 @@
             if (thaiFrequencies[noteText]) {
                 playFluteSound(thaiFrequencies[noteText], audioCtx.currentTime, 0.3);
             }
-            // แอบโหลดไฟล์เสียงฉิ่งฉับทิ้งไว้เบื้องหลังล่วงหน้าเพื่อความลื่นไหลเมื่อกด Play
             if (!isAudioLoaded) {
                 loadAudioFiles().catch(o => {});
             }
@@ -573,11 +629,13 @@
             
             if (!noteElement) {
                 const slot = e.target.closest('.note-slot');
-                if (slot && slot.innerHTML !== '') slot.innerHTML = '';
+                if (slot && slot.innerHTML !== '') {
+                    slot.innerHTML = '';
+                    saveToStorage(); // 💡 เซฟทันทีที่คลิกลบโน้ต
+                }
                 return;
             }
 
-            // ตัดระบบลากคลุมดำของ Desktop ทิ้ง
             if (e.type === 'mousedown') {
                 e.preventDefault();
             }
@@ -594,7 +652,6 @@
 
             sourceSlot = noteElement.parentElement.classList.contains('note-slot') ? noteElement.parentElement : null;
 
-            // 💡 ถ้านิ้วจิ้มโดนโน้ตที่อยู่ในกล่องรวม (ไม่ใช่ในห้องเพลง) ให้ส่งเสียงพรีวิวทันที 0ms!
             if (!sourceSlot) {
                 previewNoteSound(dragData.note);
             }
@@ -705,7 +762,10 @@
             dragData = null;
             sourceSlot = null;
             hoveredSlot = null;
-            setTimeout(() => { isDraggingNote = false; }, 50);
+            setTimeout(() => { 
+                isDraggingNote = false; 
+                saveToStorage(); // 💡 เซฟโน้ตอัตโนมัติหลังวางเสร็จ
+            }, 50);
         }
 
         document.addEventListener('mousedown', handleDragStart, {passive: false});
@@ -755,6 +815,7 @@
             deleteBtn.addEventListener('click', () => {
                 lineDiv.remove();
                 updateLineLabels(); 
+                saveToStorage(); // 💡 เซฟอัตโนมัติเมื่อลบบรรทัด
             });
             lineDiv.appendChild(deleteBtn);
 
@@ -785,11 +846,12 @@
             }
         }
 
-        createLine();
-        createLine();
+        // 💡 เรียกใช้โหลดข้อมูลจากเครื่องแทนการเปิดหน้าว่าง
+        loadFromStorage(); 
 
         addLineBtn.addEventListener('click', () => {
             createLine();
+            saveToStorage(); // 💡 เซฟอัตโนมัติเมื่อเพิ่มบรรทัด
         });
 
         const fillDashBtn = document.getElementById('fill-dash-btn');
@@ -809,6 +871,7 @@
                     slot.appendChild(newNote);
                 }
             });
+            saveToStorage(); // 💡 เซฟอัตโนมัติหลังเติมเส้นประ
         });
 
         const clearNotesBtn = document.getElementById('clear-notes');
@@ -817,6 +880,7 @@
             currentSlots.forEach(slot => {
                 slot.innerHTML = ''; 
             });
+            saveToStorage(); // 💡 เซฟอัตโนมัติหลังเคลียร์บอร์ด
         });
 
         const thaiFrequencies = {
@@ -909,7 +973,6 @@
 
         async function loadAudioFiles() {
             if (isAudioLoaded) return;
-            // 💡 ป้องกันการสร้าง AudioContext ซ้อนทับกันเมื่อมีการพรีวิวระดับเสียงล่วงหน้า
             if (!audioCtx) {
                 window.AudioContext = window.AudioContext || window.webkitAudioContext;
                 audioCtx = new AudioContext();
@@ -977,17 +1040,13 @@
                 let playChing = false;
                 let playChap = false;
 
-                // 💡 แฟลตจังหวะฉิ่ง-ฉับ ตามโครงสร้างทฤษฎีดนตรีไทยแท้ (3 ชั้น, 2 ชั้น, ชั้นเดียว)
                 if (rhythmType === "3") { 
-                    // สามชั้น: ฉิ่งลงโน้ตตัวที่ 4 ของห้อง 2, 6 (index 7, 23) และ ฉับลงโน้ตตัวที่ 4 ของห้อง 4, 8 (index 15, 31)
                     if (beatNumber % 16 === 7) playChing = true;
                     if (beatNumber % 16 === 15) playChap = true;
                 } else if (rhythmType === "2") { 
-                    // สองชั้น: ฉิ่งลงโน้ตตัวที่ 4 ของห้องคี่ (index 3, 11, ...) และ ฉับลงโน้ตตัวที่ 4 ของห้องคู่ (index 7, 15, ...)
                     if (beatNumber % 8 === 3) playChing = true;
                     if (beatNumber % 8 === 7) playChap = true;
                 } else if (rhythmType === "1") { 
-                    // ชั้นเดียว: ฉิ่งลงโน้ตตัวที่ 2 และฉับลงโน้ตตัวที่ 4 ของทุกห้อง (index 1, 3, 5, 7, ...)
                     if (beatNumber % 4 === 1) playChing = true;
                     if (beatNumber % 4 === 3) playChap = true;
                 }
@@ -1029,12 +1088,19 @@
         const tempoValueDisplay = document.getElementById('tempo-value');
 
         playBtn.addEventListener('click', async () => {
+            // 💡 บังคับกระชากระบบเสียงให้ตื่นทันทีที่นิ้วโดนปุ่ม ป้องกันบั๊กเสียงหายเมื่อทิ้งไว้นานๆ บน iPad
+            if (!audioCtx) {
+                window.AudioContext = window.AudioContext || window.webkitAudioContext;
+                audioCtx = new AudioContext();
+            }
+            if (audioCtx.state === 'suspended') {
+                await audioCtx.resume();
+            }
+
             if (!isAudioLoaded) {
                 playBtn.innerHTML = `<span>⏳</span> โหลด...`;
                 await loadAudioFiles(); 
             }
-
-            if (audioCtx.state === 'suspended') audioCtx.resume();
 
             isPlaying = !isPlaying;
             
@@ -1065,6 +1131,14 @@
         });
 
         chingToggleBtn.addEventListener('click', async () => {
+            if (!audioCtx) {
+                window.AudioContext = window.AudioContext || window.webkitAudioContext;
+                audioCtx = new AudioContext();
+            }
+            if (audioCtx.state === 'suspended') {
+                await audioCtx.resume();
+            }
+
             if (!isAudioLoaded) await loadAudioFiles(); 
 
             isChingActive = !isChingActive;
