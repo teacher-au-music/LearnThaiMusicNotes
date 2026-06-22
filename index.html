@@ -2,14 +2,12 @@
 <html lang="th">
 <head>
     <meta charset="UTF-8">
-    <!-- 💡 ปรับ Viewport เป็นความกว้างคงที่ 1200px เพื่อให้ย่อพอดีจอ iPhone/iPad ทันที และถ่างนิ้วซูมได้ -->
-    <meta name="viewport" content="width=1200">
+    <meta name="viewport" content="width=1350, user-scalable=yes">
     <title>เรียนโน้ตดนตรีไทยกับอาจารย์อู๋</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai+Looped:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     
-    <!-- นำเข้า Mobile Drag & Drop Polyfill เพื่อให้รองรับการลากบนหน้าจอสัมผัส -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/mobile-drag-drop@2.3.0-rc.2/default.css">
     <script src="https://cdn.jsdelivr.net/npm/mobile-drag-drop@2.3.0-rc.2/index.min.js"></script>
 
@@ -36,7 +34,7 @@
             --color-sol-high: #8c9eff;
         }
 
-        /* 💡 ป้องกันการคลุมดำข้อความและเมนูเด้งเวลากดค้างบนมือถือและ iPad แบบ 100% */
+        /* 💡 ปิดระบบการคลุมดำ การโชว์แว่นขยาย และการแตะค้างบน iOS แบบเด็ดขาด */
         * {
             -webkit-touch-callout: none;
             -webkit-user-select: none;
@@ -46,7 +44,7 @@
             user-select: none;
         }
 
-        /* 💡 อนุญาตให้คลิกปุ่มและช่องเลือกได้ตามปกติ */
+        /* อนุญาตให้พิมพ์หรือคลิกปุ่มได้ปกติ */
         input, select, option, button {
             -webkit-user-select: auto;
             -khtml-user-select: auto;
@@ -62,7 +60,7 @@
             margin: 0;
             padding: 0;
             text-align: center;
-            overflow-x: hidden; 
+            /* 💡 เอา overflow-x: hidden ออกไปแล้ว ขอบซ้าย-ขวาจะไม่แหว่งอีกต่อไป */
         }
 
         .bg-blobs {
@@ -259,7 +257,7 @@
             cursor: grab;
             transition: transform 0.1s, box-shadow 0.1s; 
             
-            /* 💡 พระเอกของการสัมผัส: ล็อกพฤติกรรมบนมือถือให้เป็นการลากเท่านั้น */
+            /* 💡 บังคับให้เบราว์เซอร์รับรู้ว่าชิ้นนี้มีไว้ "ลาก" เท่านั้น ไม่ต้องหน่วงเวลา */
             -webkit-user-drag: element;
             touch-action: none; 
             will-change: transform; 
@@ -515,11 +513,18 @@
     </div>
 
     <script>
-        // 💡 ตั้งค่า Polyfill ให้ลากติดนิ้วทันที ไม่มี Delay (holdToDrag: 0)
+        // 💡 1. ปรับแต่ง Polyfill ให้ติดนิ้ว 0ms ทันที และให้โน้ตลอยตรงกลางนิ้วมือเวลาลาก
         MobileDragDrop.polyfill({
-            holdToDrag: 0,
-            dragImageTranslateOverride: MobileDragDrop.scrollBehaviourDragImageTranslateOverride
+            holdToDrag: 0, 
+            dragImageCenterOnTouch: true 
         });
+
+        // 💡 2. ตัดระบบคลุมดำเมนูบน iOS ทิ้ง ป้องกันการกวนใจขณะลากโน้ต
+        window.oncontextmenu = function(event) {
+            event.preventDefault();
+            event.stopPropagation();
+            return false;
+        };
 
         const staffContainer = document.getElementById('staff-container');
         const addLineBtn = document.getElementById('add-line-btn');
