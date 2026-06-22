@@ -7,10 +7,6 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai+Looped:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/mobile-drag-drop@2.3.0-rc.2/default.css">
-    <script src="https://cdn.jsdelivr.net/npm/mobile-drag-drop@2.3.0-rc.2/index.min.js"></script>
-
     <style>
         :root {
             --primary-blue: #a3c4f3;
@@ -34,7 +30,7 @@
             --color-sol-high: #8c9eff;
         }
 
-        /* ป้องกันการคลุมดำข้อความเวลาจิ้มบน iPad/iPhone */
+        /* 💡 ปิดระบบคลุมดำและการเด้งเมนูของ Apple เด็ดขาด */
         * {
             -webkit-touch-callout: none;
             -webkit-user-select: none;
@@ -44,7 +40,6 @@
             user-select: none;
         }
 
-        /* อนุญาตให้พิมพ์หรือคลิกปุ่มต่างๆ ได้ตามปกติ */
         input, select, option, button {
             -webkit-user-select: auto;
             -khtml-user-select: auto;
@@ -61,8 +56,7 @@
             padding: 0;
             text-align: center;
             overflow-x: hidden; 
-            /* 💡 บังคับเนื้อหาทั้งหมดกว้าง 1400px เพื่อกันขอบแหว่ง */
-            min-width: 1400px;
+            min-width: 1400px; /* บังคับหน้าจอกว้าง 1400px กันขอบแหว่งใน iPad */
         }
 
         .bg-blobs {
@@ -257,10 +251,7 @@
             box-shadow: 0 4px 10px rgba(0,0,0,0.1);
             cursor: grab;
             transition: transform 0.1s, box-shadow 0.1s; 
-            
-            /* 💡 บังคับให้เบราว์เซอร์ลากอย่างเดียว ห้ามเลื่อนจอเวลายืนบนตัวโน้ต */
-            -webkit-user-drag: element;
-            touch-action: none; 
+            touch-action: none; /* ห้าม Safari ขยับจอเมื่อลูบบนตัวโน้ต */
             will-change: transform; 
         }
 
@@ -456,19 +447,19 @@
     <div class="note-palette">
         <p class="note-instruction">ลากโน้ตใส่ในห้องเพลงเพื่อแต่งเพลง</p>
         <div class="note-buttons">
-            <div class="note color-dash" draggable="true" data-note="-" data-color="color-dash">-</div>
-            <div class="note color-do" draggable="true" data-note="ด" data-color="color-do">ด</div>
-            <div class="note color-re" draggable="true" data-note="ร" data-color="color-re">ร</div>
-            <div class="note color-mi" draggable="true" data-note="ม" data-color="color-mi">ม</div>
-            <div class="note color-fa" draggable="true" data-note="ฟ" data-color="color-fa">ฟ</div>
-            <div class="note color-sol" draggable="true" data-note="ซ" data-color="color-sol">ซ</div>
-            <div class="note color-la" draggable="true" data-note="ล" data-color="color-la">ล</div>
-            <div class="note color-ti" draggable="true" data-note="ท" data-color="color-ti">ท</div>
-            <div class="note color-do-high" draggable="true" data-note="ดํ" data-color="color-do-high">ดํ</div>
-            <div class="note color-re-high" draggable="true" data-note="รํ" data-color="color-re-high">รํ</div>
-            <div class="note color-mi-high" draggable="true" data-note="มํ" data-color="color-mi-high">มํ</div>
-            <div class="note color-fa-high" draggable="true" data-note="ฟํ" data-color="color-fa-high">ฟํ</div>
-            <div class="note color-sol-high" draggable="true" data-note="ซํ" data-color="color-sol-high">ซํ</div>
+            <div class="note color-dash" data-note="-" data-color="color-dash">-</div>
+            <div class="note color-do" data-note="ด" data-color="color-do">ด</div>
+            <div class="note color-re" data-note="ร" data-color="color-re">ร</div>
+            <div class="note color-mi" data-note="ม" data-color="color-mi">ม</div>
+            <div class="note color-fa" data-note="ฟ" data-color="color-fa">ฟ</div>
+            <div class="note color-sol" data-note="ซ" data-color="color-sol">ซ</div>
+            <div class="note color-la" data-note="ล" data-color="color-la">ล</div>
+            <div class="note color-ti" data-note="ท" data-color="color-ti">ท</div>
+            <div class="note color-do-high" data-note="ดํ" data-color="color-do-high">ดํ</div>
+            <div class="note color-re-high" data-note="รํ" data-color="color-re-high">รํ</div>
+            <div class="note color-mi-high" data-note="มํ" data-color="color-mi-high">มํ</div>
+            <div class="note color-fa-high" data-note="ฟํ" data-color="color-fa-high">ฟํ</div>
+            <div class="note color-sol-high" data-note="ซํ" data-color="color-sol-high">ซํ</div>
         </div>
     </div>
 
@@ -514,90 +505,163 @@
     </div>
 
     <script>
-        // 💡 1. พระเอกของการลากติดนิ้ว: เปิดบังคับ Force Apply ปิดระบบลากดั้งเดิมของ Apple ทิ้งไปเลย!
-        MobileDragDrop.polyfill({
-            forceApply: true, 
-            holdToDrag: 0, 
-            dragImageCenterOnTouch: true 
-        });
+        // =========================================================================
+        // 💡 ระบบลากวางตัวใหม่ (Touch & Pointer Events Custom Engine)
+        // ออกแบบพิเศษเพื่อแก้ปัญหา Apple / iPadOS ลากไม่ไป โดยจะติดนิ้วทันที 0ms
+        // =========================================================================
+        let isDraggingNote = false;
+        let dragGhost = null;
+        let dragData = null;
+        let sourceSlot = null;
+        let hoveredSlot = null;
+        let startX = 0, startY = 0;
 
-        // ล็อกไม่ให้หน้าจอขยับตอนกำลังลาก
-        window.addEventListener('touchmove', function() {}, {passive: false});
+        document.addEventListener('pointerdown', (e) => {
+            if (e.button !== undefined && e.button !== 0) return; // รับเฉพาะแตะ หรือคลิกซ้าย
+
+            const noteElement = e.target.closest('.note');
+            if (!noteElement) {
+                // อนุญาตให้คลิกช่องว่างเพื่อล้างโน้ตได้
+                const slot = e.target.closest('.note-slot');
+                if (slot && slot.innerHTML !== '') slot.innerHTML = '';
+                return;
+            }
+
+            e.preventDefault(); // บล็อก Apple ไม่ให้พยายามเลื่อนหน้าจอ
+
+            startX = e.clientX;
+            startY = e.clientY;
+            isDraggingNote = false;
+
+            dragData = {
+                note: noteElement.getAttribute('data-note'),
+                color: noteElement.getAttribute('data-color')
+            };
+
+            sourceSlot = noteElement.parentElement.classList.contains('note-slot') ? noteElement.parentElement : null;
+
+            // สร้างร่างเงา (Ghost) ไว้รอใต้ปลายนิ้ว
+            dragGhost = noteElement.cloneNode(true);
+            dragGhost.style.position = 'fixed';
+            dragGhost.style.zIndex = '9999';
+            dragGhost.style.pointerEvents = 'none'; // ยอมให้นิ้วทะลุไปจิ้ม Slot ด้านล่างได้
+            dragGhost.style.margin = '0';
+            dragGhost.style.transform = 'translate(-50%, -50%) scale(1.1)';
+            dragGhost.style.opacity = '0.9';
+            dragGhost.style.display = 'none'; // ซ่อนไว้ก่อนจนกว่าจะเริ่มขยับนิ้ว
+
+            const rect = noteElement.getBoundingClientRect();
+            dragGhost.style.width = rect.width + 'px';
+            dragGhost.style.height = rect.height + 'px';
+
+            document.body.appendChild(dragGhost);
+
+            document.addEventListener('pointermove', onPointerMove, {passive: false});
+            document.addEventListener('pointerup', onPointerUp);
+            document.addEventListener('pointercancel', onPointerUp);
+        }, {passive: false});
+
+        function onPointerMove(e) {
+            if (!dragGhost) return;
+
+            // ตรวจสอบว่าขยับนิ้วเกิดระยะ 3px หรือยัง เพื่อกันการแค่ "แตะ" เฉยๆ
+            if (!isDraggingNote) {
+                const dx = Math.abs(e.clientX - startX);
+                const dy = Math.abs(e.clientY - startY);
+                if (dx > 3 || dy > 3) {
+                    isDraggingNote = true;
+                    dragGhost.style.display = 'flex'; // แสดงร่างเงา
+                    if (sourceSlot) {
+                        const orig = sourceSlot.querySelector('.note');
+                        if (orig) orig.style.opacity = '0.3'; // ให้โน้ตเดิมจางลง
+                    }
+                }
+            }
+
+            if (isDraggingNote) {
+                e.preventDefault(); 
+                // ให้ร่างเงาวิ่งตามปลายนิ้ว
+                dragGhost.style.left = e.clientX + 'px';
+                dragGhost.style.top = e.clientY + 'px';
+
+                // เช็คว่าปลายนิ้วไปตกอยู่ตรง Slot ไหน
+                const elemUnder = document.elementFromPoint(e.clientX, e.clientY);
+                const slotUnder = elemUnder ? elemUnder.closest('.note-slot') : null;
+
+                if (hoveredSlot && hoveredSlot !== slotUnder) {
+                    hoveredSlot.classList.remove('drop-zone-active');
+                }
+
+                if (slotUnder && slotUnder !== sourceSlot) {
+                    slotUnder.classList.add('drop-zone-active');
+                    hoveredSlot = slotUnder;
+                } else {
+                    hoveredSlot = null;
+                }
+            }
+        }
+
+        function onPointerUp(e) {
+            if (!dragGhost) return;
+
+            document.removeEventListener('pointermove', onPointerMove);
+            document.removeEventListener('pointerup', onPointerUp);
+            document.removeEventListener('pointercancel', onPointerUp);
+
+            dragGhost.remove();
+            dragGhost = null;
+
+            if (hoveredSlot) {
+                hoveredSlot.classList.remove('drop-zone-active');
+            }
+
+            if (isDraggingNote) {
+                const elemUnder = document.elementFromPoint(e.clientX, e.clientY);
+                const targetSlot = elemUnder ? elemUnder.closest('.note-slot') : null;
+
+                if (targetSlot && targetSlot !== sourceSlot) {
+                    // วางสำเร็จ โคลนโน้ตลงกล่อง
+                    if (sourceSlot) sourceSlot.innerHTML = ''; 
+                    targetSlot.innerHTML = ''; 
+
+                    const newNote = document.createElement('div');
+                    newNote.className = `note ${dragData.color}`;
+                    newNote.innerText = dragData.note;
+                    newNote.setAttribute('data-note', dragData.note);
+                    newNote.setAttribute('data-color', dragData.color);
+                    newNote.style.width = '100%';
+                    newNote.style.height = '100%';
+                    newNote.style.boxShadow = 'none';
+                    newNote.style.borderRadius = '4px';
+
+                    targetSlot.appendChild(newNote);
+                } else {
+                    // 💡 ลากออกไปทิ้งนอกห้องเพลง -> ลบโน้ตทิ้งให้เลย
+                    if (sourceSlot) {
+                        sourceSlot.innerHTML = '';
+                    }
+                }
+            } else {
+                // หากแค่แตะ (ไม่ได้ลาก) ให้ลบโน้ตในกล่องนั้นทิ้ง
+                if (sourceSlot) {
+                    sourceSlot.innerHTML = ''; 
+                }
+            }
+
+            dragData = null;
+            sourceSlot = null;
+            hoveredSlot = null;
+            setTimeout(() => { isDraggingNote = false; }, 50);
+        }
+        // =========================================================================
 
         const staffContainer = document.getElementById('staff-container');
         const addLineBtn = document.getElementById('add-line-btn');
-        let isDraggingNote = false; 
-        let sourceSlot = null; 
-
         const playIcon = `<svg class="icon-svg" viewBox="0 0 24 24" fill="currentColor" stroke="none"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>`;
         const pauseIcon = `<svg class="icon-svg" viewBox="0 0 24 24" fill="currentColor" stroke="none"><rect x="6" y="4" width="4" height="16"></rect><rect x="14" y="4" width="4" height="16"></rect></svg>`;
         const removeLineIcon = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line></svg>`;
 
-        function makeSlotDroppable(slot) {
-            slot.addEventListener('dragover', (e) => {
-                e.preventDefault(); 
-                slot.classList.add('drop-zone-active');
-            });
-            
-            slot.addEventListener('dragleave', () => {
-                slot.classList.remove('drop-zone-active');
-            });
-            
-            slot.addEventListener('drop', (e) => {
-                e.preventDefault();
-                const noteContent = e.dataTransfer.getData('text/plain');
-                const noteColor = e.dataTransfer.getData('data-color');
-                
-                if (sourceSlot === slot) {
-                    slot.classList.remove('drop-zone-active');
-                    return;
-                }
-
-                if (sourceSlot) {
-                    sourceSlot.innerHTML = '';
-                }
-                
-                slot.innerHTML = '';
-                const newNoteDiv = document.createElement('div');
-                newNoteDiv.className = `note ${noteColor}`;
-                newNoteDiv.innerText = noteContent;
-                newNoteDiv.style.width = '100%'; 
-                newNoteDiv.style.height = '100%'; 
-                newNoteDiv.style.boxShadow = 'none'; 
-                newNoteDiv.style.borderRadius = '4px'; 
-                
-                newNoteDiv.setAttribute('data-note', noteContent);
-                newNoteDiv.setAttribute('data-color', noteColor);
-                newNoteDiv.setAttribute('draggable', 'true');
-                
-                newNoteDiv.addEventListener('dragstart', (dragEvent) => {
-                    isDraggingNote = true; 
-                    dragEvent.dataTransfer.setData('text/plain', noteContent);
-                    dragEvent.dataTransfer.setData('data-color', noteColor);
-                    newNoteDiv.style.opacity = '0.9'; 
-                    sourceSlot = slot; 
-                    dragEvent.stopPropagation(); 
-                });
-                
-                newNoteDiv.addEventListener('dragend', () => {
-                    newNoteDiv.style.opacity = '1';
-                    setTimeout(() => isDraggingNote = false, 100); 
-                });
-                
-                slot.appendChild(newNoteDiv);
-                slot.classList.remove('drop-zone-active');
-                
-                sourceSlot = null; 
-            });
-            
-            slot.addEventListener('click', () => {
-                if (isDraggingNote) return; 
-                if(slot.innerHTML !== '') {
-                    slot.innerHTML = '';
-                }
-            });
-        }
-
+        // โค้ดสร้างบรรทัดเดิม สะอาดขึ้นเพราะไม่ต้องไปผูก Event ลากวางอีกแล้ว (ระบบใหม่จัดการรวบยอดให้หมด)
         function createLine() {
             const currentLines = document.querySelectorAll('.staff-line').length;
             if (currentLines >= 10) return; 
@@ -622,7 +686,6 @@
                     const slotDiv = document.createElement('div');
                     slotDiv.className = 'note-slot';
                     slotDiv.innerText = ""; 
-                    makeSlotDroppable(slotDiv); 
                     measureDiv.appendChild(slotDiv);
                 }
                 lineDiv.appendChild(measureDiv);
@@ -672,54 +735,21 @@
             createLine();
         });
 
-        const draggableNotes = document.querySelectorAll('.note-buttons .note');
-        draggableNotes.forEach(note => {
-            note.addEventListener('dragstart', (e) => {
-                e.dataTransfer.setData('text/plain', note.getAttribute('data-note'));
-                e.dataTransfer.setData('data-color', note.getAttribute('data-color'));
-                note.style.opacity = '0.9'; 
-                sourceSlot = null; 
-            });
-            note.addEventListener('dragend', () => {
-                note.style.opacity = '1';
-            });
-        });
-
         const fillDashBtn = document.getElementById('fill-dash-btn');
         fillDashBtn.addEventListener('click', () => {
             const currentSlots = document.querySelectorAll('.note-slot');
             currentSlots.forEach(slot => {
                 if (slot.innerHTML === '') {
-                    const noteContent = '-';
-                    const noteColor = 'color-dash';
-
-                    const newNoteDiv = document.createElement('div');
-                    newNoteDiv.className = `note ${noteColor}`;
-                    newNoteDiv.innerText = noteContent;
-                    newNoteDiv.style.width = '100%'; 
-                    newNoteDiv.style.height = '100%'; 
-                    newNoteDiv.style.boxShadow = 'none'; 
-                    newNoteDiv.style.borderRadius = '4px'; 
-                    
-                    newNoteDiv.setAttribute('data-note', noteContent);
-                    newNoteDiv.setAttribute('data-color', noteColor);
-                    newNoteDiv.setAttribute('draggable', 'true');
-                    
-                    newNoteDiv.addEventListener('dragstart', (dragEvent) => {
-                        isDraggingNote = true;
-                        dragEvent.dataTransfer.setData('text/plain', noteContent);
-                        dragEvent.dataTransfer.setData('data-color', noteColor);
-                        newNoteDiv.style.opacity = '0.9';
-                        sourceSlot = slot; 
-                        dragEvent.stopPropagation(); 
-                    });
-                    
-                    newNoteDiv.addEventListener('dragend', () => {
-                        newNoteDiv.style.opacity = '1';
-                        setTimeout(() => isDraggingNote = false, 100); 
-                    });
-                    
-                    slot.appendChild(newNoteDiv);
+                    const newNote = document.createElement('div');
+                    newNote.className = `note color-dash`;
+                    newNote.innerText = '-';
+                    newNote.style.width = '100%'; 
+                    newNote.style.height = '100%'; 
+                    newNote.style.boxShadow = 'none'; 
+                    newNote.style.borderRadius = '4px'; 
+                    newNote.setAttribute('data-note', '-');
+                    newNote.setAttribute('data-color', 'color-dash');
+                    slot.appendChild(newNote);
                 }
             });
         });
