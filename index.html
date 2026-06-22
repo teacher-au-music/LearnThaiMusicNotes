@@ -509,7 +509,7 @@
         <div class="control-group tempo-control">
             <span class="control-label">ความช้า-เร็ว</span>
             <span class="tempo-value-display" id="tempo-value">90</span>
-            <input type="range" id="tempo-slider" min="40" max="200" value="90">
+            <input type="range" id="tempo-slider" min="40" max="300" value="90">
         </div>
 
         <div class="control-group-vertical">
@@ -955,15 +955,18 @@
                 let playChing = false;
                 let playChap = false;
 
-                if (rhythmType === "2") { 
-                    if (beatNumber % 4 === 1) playChing = true;
-                    if (beatNumber % 4 === 3) playChap = true;
-                } else if (rhythmType === "1") { 
-                    if (beatNumber % 2 === 0) playChing = true;
-                    if (beatNumber % 2 === 1) playChap = true;
-                } else if (rhythmType === "3") { 
+                if (rhythmType === "3") { 
+                    // สามชั้น: ฉิ่งลงโน้ตตัวที่ 4 ของห้อง 2, 6 (index 7, 23) และ ฉับลงโน้ตตัวที่ 4 ของห้อง 4, 8 (index 15, 31)
+                    if (beatNumber % 16 === 7) playChing = true;
+                    if (beatNumber % 16 === 15) playChap = true;
+                } else if (rhythmType === "2") { 
+                    // สองชั้น: ฉิ่งลงโน้ตตัวที่ 4 ของห้องคี่ (index 3, 11, ...) และ ฉับลงโน้ตตัวที่ 4 ของห้องคู่ (index 7, 15, ...)
                     if (beatNumber % 8 === 3) playChing = true;
                     if (beatNumber % 8 === 7) playChap = true;
+                } else if (rhythmType === "1") { 
+                    // ชั้นเดียว: ฉิ่งลงโน้ตตัวที่ 2 และฉับลงโน้ตตัวที่ 4 ของทุกห้อง (index 1, 3, 5, 7, ...)
+                    if (beatNumber % 4 === 1) playChing = true;
+                    if (beatNumber % 4 === 3) playChap = true;
                 }
 
                 if (playChing && chingBuffer) {
