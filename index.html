@@ -506,8 +506,8 @@
 
     <script>
         // =========================================================================
-        // 💡 ระบบลากวางตัวใหม่ (Touch & Pointer Events Custom Engine)
-        // ออกแบบพิเศษเพื่อแก้ปัญหา Apple / iPadOS ลากไม่ไป โดยจะติดนิ้วทันที 0ms
+        // 💡 ระบบลากวางตัวใหม่ (Touch & Mouse Events Custom Engine)
+        // อัปเกรดให้รองรับ Safari บน iPad/iPhone 100% (แก้บั๊กวางโน้ตไม่ลง)
         // =========================================================================
         let isDraggingNote = false;
         let dragGhost = null;
@@ -516,21 +516,26 @@
         let hoveredSlot = null;
         let startX = 0, startY = 0;
 
-        document.addEventListener('pointerdown', (e) => {
-            if (e.button !== undefined && e.button !== 0) return; // รับเฉพาะแตะ หรือคลิกซ้าย
+        // ฟังก์ชันช่วยดึงพิกัด X, Y ไม่ว่าจะเป็นเมาส์หรือนิ้วสัมผัส
+        function getPointerPos(e) {
+            if (e.touches && e.touches.length > 0) return { x: e.touches[0].clientX, y: e.touches[0].clientY };
+            if (e.changedTouches && e.changedTouches.length > 0) return { x: e.changedTouches[0].clientX, y: e.changedTouches[0].clientY };
+            return { x: e.clientX, y: e.clientY };
+        }
+
+        function handleDragStart(e) {
+            if (e.button !== undefined && e.button !== 0) return; // รับเฉพาะคลิกซ้ายหรือแตะ
 
             const noteElement = e.target.closest('.note');
             if (!noteElement) {
-                // อนุญาตให้คลิกช่องว่างเพื่อล้างโน้ตได้
                 const slot = e.target.closest('.note-slot');
                 if (slot && slot.innerHTML !== '') slot.innerHTML = '';
                 return;
             }
 
-            e.preventDefault(); // บล็อก Apple ไม่ให้พยายามเลื่อนหน้าจอ
-
-            startX = e.clientX;
-            startY = e.clientY;
+            const pos = getPointerPos(e);
+            startX = pos.x;
+            startY = pos.y;
             isDraggingNote = false;
 
             dragData = {
@@ -540,15 +545,14 @@
 
             sourceSlot = noteElement.parentElement.classList.contains('note-slot') ? noteElement.parentElement : null;
 
-            // สร้างร่างเงา (Ghost) ไว้รอใต้ปลายนิ้ว
             dragGhost = noteElement.cloneNode(true);
             dragGhost.style.position = 'fixed';
-            dragGhost.style.zIndex = '9999';
-            dragGhost.style.pointerEvents = 'none'; // ยอมให้นิ้วทะลุไปจิ้ม Slot ด้านล่างได้
+            dragGhost.style.zIndex = '99999';
+            dragGhost.style.pointerEvents = 'none'; 
             dragGhost.style.margin = '0';
             dragGhost.style.transform = 'translate(-50%, -50%) scale(1.1)';
             dragGhost.style.opacity = '0.9';
-            dragGhost.style.display = 'none'; // ซ่อนไว้ก่อนจนกว่าจะเริ่มขยับนิ้ว
+            dragGhost.style.display = 'none';
 
             const rect = noteElement.getBoundingClientRect();
             dragGhost.style.width = rect.width + 'px';
@@ -556,36 +560,39 @@
 
             document.body.appendChild(dragGhost);
 
-            document.addEventListener('pointermove', onPointerMove, {passive: false});
-            document.addEventListener('pointerup', onPointerUp);
-            document.addEventListener('pointercancel', onPointerUp);
-        }, {passive: false});
+            document.addEventListener('mousemove', handleDragMove, {passive: false});
+            document.addEventListener('mouseup', handleDragEnd);
+            
+            document.addEventListener('touchmove', handleDragMove, {passive: false});
+            document.addEventListener('touchend', handleDragEnd);
+            document.addEventListener('touchcancel', handleDragEnd);
+        }
 
-        function onPointerMove(e) {
+        function handleDragMove(e) {
             if (!dragGhost) return;
+            const pos = getPointerPos(e);
 
-            // ตรวจสอบว่าขยับนิ้วเกิดระยะ 3px หรือยัง เพื่อกันการแค่ "แตะ" เฉยๆ
             if (!isDraggingNote) {
-                const dx = Math.abs(e.clientX - startX);
-                const dy = Math.abs(e.clientY - startY);
+                const dx = Math.abs(pos.x - startX);
+                const dy = Math.abs(pos.y - startY);
                 if (dx > 3 || dy > 3) {
                     isDraggingNote = true;
-                    dragGhost.style.display = 'flex'; // แสดงร่างเงา
+                    dragGhost.style.display = 'flex';
                     if (sourceSlot) {
                         const orig = sourceSlot.querySelector('.note');
-                        if (orig) orig.style.opacity = '0.3'; // ให้โน้ตเดิมจางลง
+                        if (orig) orig.style.opacity = '0.3';
                     }
                 }
             }
 
             if (isDraggingNote) {
-                e.preventDefault(); 
-                // ให้ร่างเงาวิ่งตามปลายนิ้ว
-                dragGhost.style.left = e.clientX + 'px';
-                dragGhost.style.top = e.clientY + 'px';
+                if (e.cancelable !== false) e.preventDefault(); // บล็อกหน้าจอไม่ให้ขยับตอนลาก
+                
+                dragGhost.style.left = pos.x + 'px';
+                dragGhost.style.top = pos.y + 'px';
 
-                // เช็คว่าปลายนิ้วไปตกอยู่ตรง Slot ไหน
-                const elemUnder = document.elementFromPoint(e.clientX, e.clientY);
+                // 💡 Safari Fix: บันทึกช่องที่ลากผ่านล่าสุดไว้ตลอดเวลา
+                const elemUnder = document.elementFromPoint(pos.x, pos.y);
                 const slotUnder = elemUnder ? elemUnder.closest('.note-slot') : null;
 
                 if (hoveredSlot && hoveredSlot !== slotUnder) {
@@ -601,26 +608,27 @@
             }
         }
 
-        function onPointerUp(e) {
+        function handleDragEnd(e) {
             if (!dragGhost) return;
 
-            document.removeEventListener('pointermove', onPointerMove);
-            document.removeEventListener('pointerup', onPointerUp);
-            document.removeEventListener('pointercancel', onPointerUp);
+            document.removeEventListener('mousemove', handleDragMove);
+            document.removeEventListener('mouseup', handleDragEnd);
+            document.removeEventListener('touchmove', handleDragMove);
+            document.removeEventListener('touchend', handleDragEnd);
+            document.removeEventListener('touchcancel', handleDragEnd);
 
             dragGhost.remove();
             dragGhost = null;
 
-            if (hoveredSlot) {
-                hoveredSlot.classList.remove('drop-zone-active');
-            }
-
             if (isDraggingNote) {
-                const elemUnder = document.elementFromPoint(e.clientX, e.clientY);
-                const targetSlot = elemUnder ? elemUnder.closest('.note-slot') : null;
+                // 💡 Safari Fix: ตอนปล่อยนิ้ว ให้ยัดลงช่องที่จำไว้ล่าสุดเลย ไม่ต้องสืบค้นใหม่
+                const targetSlot = hoveredSlot;
+
+                if (targetSlot) {
+                    targetSlot.classList.remove('drop-zone-active');
+                }
 
                 if (targetSlot && targetSlot !== sourceSlot) {
-                    // วางสำเร็จ โคลนโน้ตลงกล่อง
                     if (sourceSlot) sourceSlot.innerHTML = ''; 
                     targetSlot.innerHTML = ''; 
 
@@ -636,16 +644,10 @@
 
                     targetSlot.appendChild(newNote);
                 } else {
-                    // 💡 ลากออกไปทิ้งนอกห้องเพลง -> ลบโน้ตทิ้งให้เลย
-                    if (sourceSlot) {
-                        sourceSlot.innerHTML = '';
-                    }
+                    if (sourceSlot) sourceSlot.innerHTML = '';
                 }
             } else {
-                // หากแค่แตะ (ไม่ได้ลาก) ให้ลบโน้ตในกล่องนั้นทิ้ง
-                if (sourceSlot) {
-                    sourceSlot.innerHTML = ''; 
-                }
+                if (sourceSlot) sourceSlot.innerHTML = ''; 
             }
 
             dragData = null;
@@ -653,6 +655,9 @@
             hoveredSlot = null;
             setTimeout(() => { isDraggingNote = false; }, 50);
         }
+
+        document.addEventListener('mousedown', handleDragStart, {passive: false});
+        document.addEventListener('touchstart', handleDragStart, {passive: false});
         // =========================================================================
 
         const staffContainer = document.getElementById('staff-container');
