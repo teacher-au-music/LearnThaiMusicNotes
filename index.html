@@ -414,6 +414,20 @@
             margin-right: 2px;
         }
 
+        .watermark-footer {
+            margin-top: 60px;
+            padding-bottom: 40px;
+            text-align: center;
+            color: #8faadc; /* สีฟ้าหม่นๆ ให้ดูกลืนไปกับแบล็คกราวด์ */
+            font-size: 15px;
+            font-weight: 500;
+            opacity: 0.6; /* ปรับความโปร่งแสงให้ดูเหมือนลายน้ำ */
+            pointer-events: none; /* 💡 พระเอกของเรา: ทำให้เมาส์ทะลุผ่าน จับต้องไม่ได้เลย */
+            user-select: none;
+            letter-spacing: 0.5px;
+            line-height: 1.6;
+        }
+        
     </style>
 </head>
 <body>
@@ -494,6 +508,15 @@
                 ลบโน้ตทั้งหมด
             </button>
         </div>
+
+        <div class="watermark-footer">
+        พัฒนาและออกแบบโดย <strong>อาจารย์อู๋</strong> (Teacher Au)<br>
+        เพื่อการศึกษาและเป็นสื่อการเรียนการสอนดนตรีไทย<br>
+        © 2026 All Rights Reserved.
+    </div>
+
+    <script>
+    // ... โค้ด Javascript เดิม ...
     </div>
 
     <script>
