@@ -30,7 +30,7 @@
             --color-sol-high: #8c9eff;
         }
 
-        /* 💡 ปิดระบบคลุมดำและการเด้งเมนูของ Apple เด็ดขาด */
+        /* 💡 Desktop Fix: สั่งห้ามคลุมดำข้อความทั้งหน้าเว็บ 100% แก้บั๊กลากติดข้อความบน Mac/PC */
         * {
             -webkit-touch-callout: none;
             -webkit-user-select: none;
@@ -38,14 +38,6 @@
             -moz-user-select: none;
             -ms-user-select: none;
             user-select: none;
-        }
-
-        input, select, option, button {
-            -webkit-user-select: auto;
-            -khtml-user-select: auto;
-            -moz-user-select: auto;
-            -ms-user-select: auto;
-            user-select: auto;
         }
 
         body {
@@ -56,7 +48,7 @@
             padding: 0;
             text-align: center;
             overflow-x: hidden; 
-            min-width: 1400px; /* บังคับหน้าจอกว้าง 1400px กันขอบแหว่งใน iPad */
+            min-width: 1400px; 
         }
 
         .bg-blobs {
@@ -251,7 +243,7 @@
             box-shadow: 0 4px 10px rgba(0,0,0,0.1);
             cursor: grab;
             transition: transform 0.1s, box-shadow 0.1s; 
-            touch-action: none; /* ห้าม Safari ขยับจอเมื่อลูบบนตัวโน้ต */
+            touch-action: none; 
             will-change: transform; 
         }
 
@@ -506,8 +498,7 @@
 
     <script>
         // =========================================================================
-        // 💡 ระบบลากวางตัวใหม่ (Touch & Mouse Events Custom Engine)
-        // อัปเกรดให้รองรับ Safari บน iPad/iPhone 100% (แก้บั๊กวางโน้ตไม่ลง)
+        // ระบบลากวาง (Touch & Mouse Events Custom Engine)
         // =========================================================================
         let isDraggingNote = false;
         let dragGhost = null;
@@ -516,7 +507,6 @@
         let hoveredSlot = null;
         let startX = 0, startY = 0;
 
-        // ฟังก์ชันช่วยดึงพิกัด X, Y ไม่ว่าจะเป็นเมาส์หรือนิ้วสัมผัส
         function getPointerPos(e) {
             if (e.touches && e.touches.length > 0) return { x: e.touches[0].clientX, y: e.touches[0].clientY };
             if (e.changedTouches && e.changedTouches.length > 0) return { x: e.changedTouches[0].clientX, y: e.changedTouches[0].clientY };
@@ -524,13 +514,18 @@
         }
 
         function handleDragStart(e) {
-            if (e.button !== undefined && e.button !== 0) return; // รับเฉพาะคลิกซ้ายหรือแตะ
+            if (e.button !== undefined && e.button !== 0) return; 
 
             const noteElement = e.target.closest('.note');
             if (!noteElement) {
                 const slot = e.target.closest('.note-slot');
                 if (slot && slot.innerHTML !== '') slot.innerHTML = '';
                 return;
+            }
+
+            // 💡 Desktop Fix: สั่ง e.preventDefault() เพื่อตัดวงจรการเริ่มคลุมดำของเมาส์บนคอมพิวเตอร์
+            if (e.type === 'mousedown') {
+                e.preventDefault();
             }
 
             const pos = getPointerPos(e);
@@ -586,12 +581,11 @@
             }
 
             if (isDraggingNote) {
-                if (e.cancelable !== false) e.preventDefault(); // บล็อกหน้าจอไม่ให้ขยับตอนลาก
+                if (e.cancelable !== false) e.preventDefault(); 
                 
                 dragGhost.style.left = pos.x + 'px';
                 dragGhost.style.top = pos.y + 'px';
 
-                // 💡 Safari Fix: บันทึกช่องที่ลากผ่านล่าสุดไว้ตลอดเวลา
                 const elemUnder = document.elementFromPoint(pos.x, pos.y);
                 const slotUnder = elemUnder ? elemUnder.closest('.note-slot') : null;
 
@@ -621,7 +615,6 @@
             dragGhost = null;
 
             if (isDraggingNote) {
-                // 💡 Safari Fix: ตอนปล่อยนิ้ว ให้ยัดลงช่องที่จำไว้ล่าสุดเลย ไม่ต้องสืบค้นใหม่
                 const targetSlot = hoveredSlot;
 
                 if (targetSlot) {
@@ -666,7 +659,6 @@
         const pauseIcon = `<svg class="icon-svg" viewBox="0 0 24 24" fill="currentColor" stroke="none"><rect x="6" y="4" width="4" height="16"></rect><rect x="14" y="4" width="4" height="16"></rect></svg>`;
         const removeLineIcon = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line></svg>`;
 
-        // โค้ดสร้างบรรทัดเดิม สะอาดขึ้นเพราะไม่ต้องไปผูก Event ลากวางอีกแล้ว (ระบบใหม่จัดการรวบยอดให้หมด)
         function createLine() {
             const currentLines = document.querySelectorAll('.staff-line').length;
             if (currentLines >= 10) return; 
