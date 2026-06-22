@@ -31,7 +31,7 @@
             --color-sol-high: #8c9eff;
         }
 
-        /* 💡 ปิดระบบคลุมดำข้อความทั้งหน้าเว็บ 100% แก้บั๊กลากติดข้อความบน Mac/PC และ iPad */
+        /* 💡 Desktop Fix: สั่งห้ามคลุมดำข้อความทั้งหน้าเว็บ 100% แก้บั๊กลากติดข้อความบน Mac/PC และ iPad */
         * {
             -webkit-touch-callout: none;
             -webkit-user-select: none;
@@ -433,9 +433,9 @@
             padding-bottom: 40px;
             text-align: center;
             color: #8faadc; 
-            font-size: 12px;
+            font-size: 15px;
             font-weight: 500;
-            opacity: 0.4; 
+            opacity: 0.6; 
             pointer-events: none; /* ทำให้เมาส์ทะลุผ่าน จับต้องไม่ได้เลย */
             user-select: none;
             letter-spacing: 0.5px;
@@ -548,13 +548,29 @@
             return { x: e.clientX, y: e.clientY };
         }
 
+        // 💡 ฟังก์ชันพรีวิวระดับเสียงเมื่อผู้เรียนจิ้ม/คลิกเลือกโน้ตในกล่องรวม
+        async function previewNoteSound(noteText) {
+            if (!audioCtx) {
+                window.AudioContext = window.AudioContext || window.webkitAudioContext;
+                audioCtx = new AudioContext();
+            }
+            if (audioCtx.state === 'suspended') {
+                await audioCtx.resume();
+            }
+            if (thaiFrequencies[noteText]) {
+                playFluteSound(thaiFrequencies[noteText], audioCtx.currentTime, 0.3);
+            }
+            // แอบโหลดไฟล์เสียงฉิ่งฉับทิ้งไว้เบื้องหลังล่วงหน้าเพื่อความลื่นไหลเมื่อกด Play
+            if (!isAudioLoaded) {
+                loadAudioFiles().catch(o => {});
+            }
+        }
+
         function handleDragStart(e) {
-            // รับเฉพาะคลิกซ้ายหรือการแตะหน้าจอ
             if (e.button !== undefined && e.button !== 0) return; 
 
             const noteElement = e.target.closest('.note');
             
-            // ถ้านิ้วจิ้มโดนช่องว่างๆ ในห้องเพลง ให้เคลียร์โน้ตทิ้ง
             if (!noteElement) {
                 const slot = e.target.closest('.note-slot');
                 if (slot && slot.innerHTML !== '') slot.innerHTML = '';
@@ -577,6 +593,11 @@
             };
 
             sourceSlot = noteElement.parentElement.classList.contains('note-slot') ? noteElement.parentElement : null;
+
+            // 💡 ถ้านิ้วจิ้มโดนโน้ตที่อยู่ในกล่องรวม (ไม่ใช่ในห้องเพลง) ให้ส่งเสียงพรีวิวทันที 0ms!
+            if (!sourceSlot) {
+                previewNoteSound(dragData.note);
+            }
 
             dragGhost = noteElement.cloneNode(true);
             dragGhost.style.position = 'fixed';
@@ -605,7 +626,6 @@
             if (!dragGhost) return;
             const pos = getPointerPos(e);
 
-            // เช็คว่านิ้วขยับเกิดระยะหรือยัง
             if (!isDraggingNote) {
                 const dx = Math.abs(pos.x - startX);
                 const dy = Math.abs(pos.y - startY);
@@ -620,7 +640,6 @@
             }
 
             if (isDraggingNote) {
-                // บล็อกไม่ให้หน้าจอเลื่อนเวลาลากโน้ต
                 if (e.cancelable !== false) e.preventDefault(); 
                 
                 dragGhost.style.left = pos.x + 'px';
@@ -890,8 +909,11 @@
 
         async function loadAudioFiles() {
             if (isAudioLoaded) return;
-            window.AudioContext = window.AudioContext || window.webkitAudioContext;
-            audioCtx = new AudioContext();
+            // 💡 ป้องกันการสร้าง AudioContext ซ้อนทับกันเมื่อมีการพรีวิวระดับเสียงล่วงหน้า
+            if (!audioCtx) {
+                window.AudioContext = window.AudioContext || window.webkitAudioContext;
+                audioCtx = new AudioContext();
+            }
             
             try {
                 const [chingRes, chapRes] = await Promise.all([
@@ -955,6 +977,7 @@
                 let playChing = false;
                 let playChap = false;
 
+                // 💡 แฟลตจังหวะฉิ่ง-ฉับ ตามโครงสร้างทฤษฎีดนตรีไทยแท้ (3 ชั้น, 2 ชั้น, ชั้นเดียว)
                 if (rhythmType === "3") { 
                     // สามชั้น: ฉิ่งลงโน้ตตัวที่ 4 ของห้อง 2, 6 (index 7, 23) และ ฉับลงโน้ตตัวที่ 4 ของห้อง 4, 8 (index 15, 31)
                     if (beatNumber % 16 === 7) playChing = true;
