@@ -129,7 +129,7 @@
             gap: 8px;
         }
 
-        /* 💡 คืนค่า Margin ด้านบนให้กระดานห่างจากหัวข้อ 50px เมื่อไม่มีชื่อเพลง */
+        /* 💡 คืนค่า Margin ด้านบนให้ห้องเพลงห่างจากหัวข้อ 50px เมื่อไม่มีชื่อเพลง */
         .staff-lines {
             margin: 50px auto 20px auto; 
             display: flex;
@@ -579,7 +579,7 @@
             color: #8faadc; 
             font-size: 15px;
             font-weight: 500;
-            opacity: 0.6; 
+            opacity: 0.3; 
             pointer-events: none; 
             user-select: none;
             letter-spacing: 0.5px;
@@ -600,7 +600,7 @@
         โน้ตเพลงไทย..สไตล์เรา
     </header>
 
-    <div id="current-song-title-container" style="display: none; justify-content: center; margin-top: 20px; margin-bottom: -15px;">
+    <div id="current-song-title-container" style="display: none; justify-content: center; margin-top: 25px; margin-bottom: -40px;">
         <div class="current-song-title" id="current-song-title"></div>
     </div>
 
@@ -632,7 +632,7 @@
             
             <button class="action-btn" id="fill-dash-btn" style="position: absolute; right: 0; color: #ba68c8; padding: 6px 14px; background: rgba(255, 255, 255, 0.8); backdrop-filter: blur(10px); border: 1px solid rgba(186, 104, 200, 0.3); border-radius: 16px; box-shadow: 0 4px 12px rgba(186, 104, 200, 0.1);">
                 <svg class="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line></svg>
-                ใส่ -
+                อัตโนมัติ
             </button>
         </div>
 
@@ -857,7 +857,7 @@
                 title.onclick = () => {
                     savedSongsMenu.classList.remove('show');
                     if (hasUnsavedChanges()) {
-                        if(confirm(`มีโน้ตในกระดานที่ยังไม่ได้บันทึก หากโหลดเพลง "${song.name}" โน้ตปัจจุบันจะสูญหายถาวร\n\nต้องการเปิดโน้ตเพลง "${song.name}" ใช่หรือไม่?`)) {
+                        if(confirm(`มีโน้ตที่ยังไม่ได้บันทึก หากเปิดโน้ตเพลง "${song.name}" โน้ตปัจจุบันจะสูญหายถาวร\n\nต้องการเปิดโน้ตเพลง "${song.name}" ใช่หรือไม่?`)) {
                             currentSongName = song.name;
                             localStorage.setItem('currentThaiSongName', currentSongName);
                             updateSongTitleUI();
@@ -899,7 +899,7 @@
         saveSongBtn.addEventListener('click', () => {
             const currentDataStr = getStaffDataString();
             if (isBoardEmpty()) {
-                alert("กระดานว่างเปล่า ไม่สามารถบันทึกได้ กรุณาใส่โน้ตก่อนครับ");
+                alert("ห้องเพลงว่างเปล่า ไม่สามารถบันทึกได้ กรุณาใส่โน้ตก่อนครับ");
                 return;
             }
 
@@ -932,11 +932,11 @@
         const clearNotesBtn = document.getElementById('clear-notes');
         clearNotesBtn.addEventListener('click', () => {
             if (hasUnsavedChanges()) {
-                if(confirm("มีโน้ตในกระดานที่ยังไม่ได้กด 'บันทึกเพลง' หากลบตอนนี้ โน้ตจะสูญหายถาวร\n\nแน่ใจหรือไม่ว่าต้องการลบโน้ตทั้งหมด?")) {
+                if(confirm("มีโน้ตในห้องเพลงที่ยังไม่ได้กด 'บันทึกเพลง' หากลบตอนนี้ โน้ตจะสูญหายถาวร\n\nแน่ใจหรือไม่ว่าต้องการลบโน้ตทั้งหมด?")) {
                     doClearNotes();
                 }
             } else if (!isBoardEmpty()) {
-                if(confirm("ต้องการลบโน้ตเพื่อเริ่มแต่งเพลงใหม่ใช่หรือไม่? (เพลงในคลังจะไม่ถูกลบ)")) {
+                if(confirm("ต้องการลบโน้ตเพื่อเริ่มแต่งเพลงใหม่ใช่หรือไม่? (เพลงที่บันทึกแล้วจะไม่ถูกลบ)")) {
                     doClearNotes();
                 }
             }
