@@ -129,7 +129,6 @@
             gap: 8px;
         }
 
-        /* 💡 คืนค่า Margin ด้านบนให้ห้องเพลงห่างจากหัวข้อ 50px เมื่อไม่มีชื่อเพลง */
         .staff-lines {
             margin: 50px auto 20px auto; 
             display: flex;
@@ -545,26 +544,6 @@
             flex-grow: 1;
         }
 
-        .dropdown-item-delete {
-            color: #ef9a9a;
-            background: rgba(239, 154, 154, 0.15);
-            border-radius: 50%;
-            width: 24px;
-            height: 24px;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            margin-left: 10px;
-            flex-shrink: 0;
-            font-size: 16px;
-            transition: 0.2s;
-        }
-
-        .dropdown-item-delete:hover {
-            background: #e53935;
-            color: #ffffff;
-        }
-
         .dropdown-empty {
             padding: 15px;
             color: #888;
@@ -586,6 +565,66 @@
             line-height: 1.6;
         }
 
+        /* 💡 ชุด CSS สำหรับปุ่มแชร์และปุ่มลบใน Dropdown */
+        .dropdown-item-actions {
+            display: flex;
+            gap: 6px;
+            margin-left: 10px;
+        }
+        .dropdown-action-btn {
+            border-radius: 50%;
+            width: 26px;
+            height: 26px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            transition: 0.2s;
+        }
+        .dropdown-item-share {
+            color: #4caf50;
+            background: rgba(76, 175, 80, 0.15);
+        }
+        .dropdown-item-share:hover {
+            background: #4caf50;
+            color: #ffffff;
+        }
+        .dropdown-item-delete {
+            color: #ef9a9a;
+            background: rgba(239, 154, 154, 0.15);
+            font-size: 16px;
+        }
+        .dropdown-item-delete:hover {
+            background: #e53935;
+            color: #ffffff;
+        }
+
+        /* 💡 Toast แจ้งเตือนเมื่อคัดลอกลิงก์สำเร็จ */
+        .toast-message {
+            position: fixed;
+            bottom: -80px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(51, 51, 51, 0.9);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: 500;
+            transition: bottom 0.4s ease;
+            z-index: 9999;
+        }
+        .toast-message.show {
+            bottom: 30px;
+        }
+
+        /* 💡 คลาสพิเศษสำหรับล็อกบอร์ดตอนเป็นโหมดแชร์ */
+        .read-only-board .note-slot {
+            pointer-events: none !important;
+        }
+        .read-only-board .delete-line-btn {
+            display: none !important;
+        }
     </style>
 </head>
 <body>
@@ -702,13 +741,15 @@
             <div class="dropdown-container">
                 <button class="action-btn" id="open-saved-btn" style="color: #3a86ff;">
                     <svg class="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"></line><line x1="8" y1="12" x2="21" y2="12"></line><line x1="8" y1="18" x2="21" y2="18"></line><line x1="3" y1="6" x2="3.01" y2="6"></line><line x1="3" y1="12" x2="3.01" y2="12"></line><line x1="3" y1="18" x2="3.01" y2="18"></line></svg>
-                    เพลงที่บันทึกไว้ ▾
+                    คลังเพลงที่บันทึกไว้ ▾
                 </button>
                 <div id="saved-songs-menu" class="dropdown-menu">
                 </div>
             </div>
         </div>
     </div>
+
+    <div id="toast" class="toast-message">คัดลอกลิงก์สำหรับแชร์เรียบร้อยแล้ว!</div>
 
     <div class="watermark-footer">
         พัฒนาและออกแบบโดย นายศุภวิชญ์ สุวรรณนิกวณิช<br>
@@ -717,14 +758,102 @@
     </div>
 
     <script>
+        // =========================================================================
+        // 💡 ระบบตัวแปร การแชร์ และโหมดผู้อ่าน
+        // =========================================================================
+        let isReadOnlyMode = false;
         let lastSavedState = "[]"; 
         let currentSongName = localStorage.getItem('currentThaiSongName') || "";
+
+        function encodeShareData(obj) {
+            return btoa(encodeURIComponent(JSON.stringify(obj)));
+        }
+
+        function decodeShareData(str) {
+            return JSON.parse(decodeURIComponent(atob(str)));
+        }
+
+        function showToast() {
+            const toast = document.getElementById("toast");
+            toast.classList.add("show");
+            setTimeout(() => { toast.classList.remove("show"); }, 3000);
+        }
+
+        function enableReadOnlyUI() {
+            isReadOnlyMode = true;
+            document.querySelector('.note-palette').style.display = 'none';
+            document.querySelector('.add-line-container').style.display = 'none';
+            document.getElementById('save-song-btn').style.display = 'none';
+            document.querySelector('.dropdown-container').style.display = 'none';
+            document.getElementById('staff-container').classList.add('read-only-board');
+
+            const controlsVert = document.querySelector('.control-group-vertical');
+            
+            // 💡 1. ปุ่มแต่งเพลงใหม่ (สั่งบังคับรีโหลดหน้าเว็บ)
+            const createNewBtn = document.createElement('button');
+            createNewBtn.className = 'action-btn glass-btn';
+            createNewBtn.style.color = '#3a86ff'; 
+            createNewBtn.innerHTML = `
+                <svg class="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+                แต่งเพลงใหม่
+            `;
+            createNewBtn.onclick = () => {
+                // เคลียร์ชื่อเพลงเดิม
+                localStorage.removeItem('currentThaiSongName');
+                // 💡 บังคับโหลดหน้าเว็บใหม่ เพื่อล้างนาฬิกาเสียงและเคลียร์บอร์ดให้กลับมา 100%
+                window.location.href = window.location.origin + window.location.pathname;
+            };
+            controlsVert.appendChild(createNewBtn);
+
+            // 💡 2. ปุ่มบันทึกลงเครื่องเพื่อแก้ไข (สั่งบังคับรีโหลดหน้าเว็บ)
+            const saveLocalBtn = document.createElement('button');
+            saveLocalBtn.className = 'action-btn glass-btn';
+            saveLocalBtn.style.color = '#ff9800'; 
+            saveLocalBtn.innerHTML = `
+                <svg class="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>
+                บันทึกโน้ตเพลงนี้
+            `;
+            saveLocalBtn.onclick = () => {
+                const newName = prompt("ตั้งชื่อเพลงเพื่อบันทึกลงคลังเพลง:", currentSongName);
+                if (!newName || newName.trim() === "") return;
+                
+                const savedSongs = JSON.parse(localStorage.getItem('savedThaiSongsList') || '[]');
+                const existingSongIndex = savedSongs.findIndex(s => s.name === newName.trim());
+                if (existingSongIndex > -1) {
+                    savedSongs[existingSongIndex].data = getStaffDataString(); // 💡 ต้องใช้ String เพราะเซฟลง Array
+                } else {
+                    savedSongs.push({
+                        id: Date.now(),
+                        name: newName.trim(),
+                        data: getStaffDataString() // 💡 ต้องใช้ String เพราะเซฟลง Array
+                    });
+                }
+                
+                // บันทึกเพลงลงเครื่อง
+                localStorage.setItem('savedThaiSongsList', JSON.stringify(savedSongs));
+                localStorage.setItem('currentThaiSongName', newName.trim());
+                
+                // เซฟข้อมูลลงกระดานหลักให้หน้าเว็บจำไว้ตอนโหลดใหม่
+                localStorage.setItem('thaiMusicNotesData', getStaffDataString());
+                
+                alert("บันทึกสำเร็จ! เข้าสู่โหมดแก้ไข");
+                
+                // 💡 บังคับโหลดหน้าเว็บใหม่ เพื่อเข้าสู่โหมดแก้ไขอย่างสมบูรณ์แบบ
+                window.location.href = window.location.origin + window.location.pathname; 
+            };
+            controlsVert.appendChild(saveLocalBtn);
+        }
 
         function updateSongTitleUI() {
             const titleContainer = document.getElementById('current-song-title-container');
             const titleSpan = document.getElementById('current-song-title');
             if (currentSongName) {
-                titleSpan.innerHTML = `<span class="text-gradient">เพลง ${currentSongName}</span>`;
+                // 💡 แสดงชื่อเพลงแบบมีวงเล็บบอกว่าเป็นลิงก์แชร์
+                if (isReadOnlyMode) {
+                    titleSpan.innerHTML = `<span class="text-gradient">เพลง ${currentSongName} (ดูเท่านั้น)</span>`;
+                } else {
+                    titleSpan.innerHTML = `<span class="text-gradient">เพลง ${currentSongName}</span>`;
+                }
                 titleContainer.style.display = 'flex';
             } else {
                 titleContainer.style.display = 'none';
@@ -764,12 +893,14 @@
         }
 
         function hasUnsavedChanges() {
+            if (isReadOnlyMode) return false; // 💡 โหมดอ่านไม่ต้องเช็กเซฟ
             const currentDataStr = getStaffDataString();
             if (isBoardEmpty()) return false; 
             return currentDataStr !== lastSavedState; 
         }
 
         function saveToStorage() {
+            if (isReadOnlyMode) return; // 💡 โหมดอ่านห้ามเซฟทับงานเครื่องตัวเอง
             const currentDataStr = getStaffDataString();
             localStorage.setItem('thaiMusicNotesData', currentDataStr);
         }
@@ -871,12 +1002,36 @@
                     }
                 };
 
+                // 💡 สร้างกลุ่มปุ่ม Action สำหรับแชร์และลบ
+                const actionsDiv = document.createElement('div');
+                actionsDiv.className = 'dropdown-item-actions';
+
+                // ปุ่มแชร์ลิงก์
+                const shareBtn = document.createElement('div');
+                shareBtn.className = 'dropdown-action-btn dropdown-item-share';
+                shareBtn.title = "แชร์เพลงนี้";
+                shareBtn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"></path><polyline points="16 6 12 2 8 6"></polyline><line x1="12" y1="2" x2="12" y2="15"></line></svg>';
+                shareBtn.onclick = (e) => {
+                    e.stopPropagation();
+                    const shareObject = { name: song.name, data: song.data };
+                    const encodedStr = encodeShareData(shareObject);
+                    const shareUrl = window.location.origin + window.location.pathname + '?share=' + encodedStr;
+                    
+                    navigator.clipboard.writeText(shareUrl).then(() => {
+                        savedSongsMenu.classList.remove('show');
+                        showToast(); // เด้ง Toast แจ้งเตือน
+                    }).catch(err => {
+                        alert("ไม่สามารถคัดลอกได้ กรุณาก๊อปปี้ลิงก์นี้:\n\n" + shareUrl);
+                    });
+                };
+
+                // ปุ่มลบ
                 const delBtn = document.createElement('div');
-                delBtn.className = 'dropdown-item-delete';
+                delBtn.className = 'dropdown-action-btn dropdown-item-delete';
                 delBtn.innerHTML = '×';
                 delBtn.onclick = (e) => {
                     e.stopPropagation();
-                    if(confirm(`ลบเพลง "${song.name}" ออกจากคลัง ใช่หรือไม่?`)) {
+                    if(confirm(`ลบเพลง "${song.name}" ออกจากคลังเพลง ใช่หรือไม่?`)) {
                         const newSongs = savedSongs.filter(s => s.id !== song.id);
                         localStorage.setItem('savedThaiSongsList', JSON.stringify(newSongs));
                         
@@ -890,8 +1045,11 @@
                     }
                 };
 
+                actionsDiv.appendChild(shareBtn);
+                actionsDiv.appendChild(delBtn);
+
                 item.appendChild(title);
-                item.appendChild(delBtn);
+                item.appendChild(actionsDiv);
                 savedSongsMenu.appendChild(item);
             });
         }
@@ -985,6 +1143,9 @@
         }
 
         function handleDragStart(e) {
+            // 💡 ถ้าอยู่ในโหมดแชร์ จะล็อกไม่ให้ดึงโน้ต
+            if (isReadOnlyMode) return;
+
             if (e.button !== undefined && e.button !== 0) return; 
 
             const noteElement = e.target.closest('.note');
@@ -1135,6 +1296,10 @@
 
         const staffContainer = document.getElementById('staff-container');
         const addLineBtn = document.getElementById('add-line-btn');
+        addLineBtn.onclick = () => {
+            // เมื่อกดปุ่ม ให้ไปเรียกใช้ฟังก์ชัน createLine
+            createLine();
+        };
         
         const playIcon = `<svg class="icon-svg" viewBox="0 0 24 24" fill="currentColor" stroke="none"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>`;
         const pauseIcon = `<svg class="icon-svg" viewBox="0 0 24 24" fill="currentColor" stroke="none"><rect x="6" y="4" width="4" height="16"></rect><rect x="14" y="4" width="4" height="16"></rect></svg>`;
@@ -1219,14 +1384,6 @@
                 addLineBtn.style.display = 'inline-flex';
             }
         }
-
-        loadFromStorage();
-        renderSavedSongs(); 
-
-        addLineBtn.addEventListener('click', () => {
-            createLine();
-            saveToStorage(); 
-        });
 
         const fillDashBtn = document.getElementById('fill-dash-btn');
         fillDashBtn.addEventListener('click', () => {
@@ -1532,6 +1689,30 @@
                 paletteAll.style.display = 'flex';
             }
         });
+
+        // 💡 ตรวจจับการเปิดลิงก์แบบแชร์ เมื่อเริ่มหน้าเว็บ
+        window.onload = () => {
+            const urlParams = new URLSearchParams(window.location.search);
+            const sharedDataStr = urlParams.get('share');
+
+            if (sharedDataStr) {
+                try {
+                    const sharedSong = decodeShareData(sharedDataStr);
+                    currentSongName = sharedSong.name;
+                    enableReadOnlyUI();
+                    renderStaffData(sharedSong.data);
+                    updateSongTitleUI();
+                    return; // ถ้าโหลดสำเร็จให้จบเลย ไม่ต้องไปโหลดจากเครื่องซ้ำ
+                } catch (e) {
+                    alert("ลิงก์แชร์ไม่ถูกต้องหรือหมดอายุ");
+                    window.location.href = window.location.origin + window.location.pathname;
+                }
+            } 
+            
+            // ถ้าไม่ใช่ลิงก์แชร์ ให้ทำงานตามปกติ
+            loadFromStorage();
+            renderSavedSongs(); 
+        };
 
     </script>
 </body>
