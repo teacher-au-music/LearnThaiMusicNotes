@@ -565,7 +565,6 @@
             line-height: 1.6;
         }
 
-        /* CSS สำหรับปุ่มแชร์และกล่องแจ้งเตือน */
         .dropdown-item-actions {
             display: flex;
             gap: 6px;
@@ -600,7 +599,7 @@
         }
         .toast-message {
             position: fixed;
-            bottom: -200px;
+            bottom: -100px;
             left: 50%;
             transform: translateX(-50%);
             background: rgba(51, 51, 51, 0.9);
@@ -621,9 +620,41 @@
         .read-only-board .delete-line-btn {
             display: none !important;
         }
+        
+        /* 💡 สร้าง Loading UI เวลารอโหลดข้อมูล */
+        #loading-overlay {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(255,255,255,0.8);
+            backdrop-filter: blur(5px);
+            z-index: 99999;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+            font-size: 1.2em;
+            color: #3a86ff;
+            font-weight: 600;
+        }
+        .spinner {
+            border: 4px solid rgba(58, 134, 255, 0.3);
+            border-radius: 50%;
+            border-top: 4px solid #3a86ff;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin-bottom: 15px;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
     </style>
 </head>
 <body>
+
+    <!-- 💡 เพิ่มหน้าจอ Loading -->
+    <div id="loading-overlay" style="display: none;">
+        <div class="spinner"></div>
+        กำลังโหลดโน้ตเพลง...
+    </div>
 
     <div class="bg-blobs">
         <div class="blob blob-1"></div>
@@ -754,35 +785,29 @@
     </div>
 
     <script>
-        // 💡 1. เพิ่มตัวแปร Compressor และ Master Gain
         let audioCtx;
         let compressor;
         let masterGain;
 
-        // 💡 2. สร้างฟังก์ชันกลางสำหรับตั้งค่าท่อเสียงและตัวกันเสียงแตก
         function ensureAudioContext() {
             if (!audioCtx) {
                 window.AudioContext = window.AudioContext || window.webkitAudioContext;
                 audioCtx = new AudioContext();
                 
-                // สร้าง Compressor คุมเสียงไม่ให้แตก (Chrome)
                 compressor = audioCtx.createDynamicsCompressor();
                 compressor.threshold.value = -10;
                 compressor.ratio.value = 12;
                 compressor.attack.value = 0;
                 compressor.release.value = 0.25;
 
-                // สร้างตัวคุมวอลลุ่มหลัก (ลดเสียงลงนิดนึงให้ละมุนขึ้น)
                 masterGain = audioCtx.createGain();
                 masterGain.gain.value = 0.8;
 
-                // เชื่อมต่อ: Compressor -> MasterGain -> ลำโพงเครื่อง
                 compressor.connect(masterGain);
                 masterGain.connect(audioCtx.destination);
             }
         }
 
-        // 💡 3. เรียกใช้ฟังก์ชันกลางตอนแตะหน้าจอ (แก้เสียงมาช้า)
         document.body.addEventListener('touchstart', function() {
             ensureAudioContext();
             if (audioCtx.state === 'suspended') {
@@ -802,16 +827,17 @@
         let lastSavedState = "[]"; 
         let currentSongName = localStorage.getItem('currentThaiSongName') || "";
 
-        function encodeShareData(obj) { return btoa(encodeURIComponent(JSON.stringify(obj))); }
-        function decodeShareData(str) { return JSON.parse(decodeURIComponent(atob(str))); }
-
-        function showToast() {
+        function showToast(message = "คัดลอกลิงก์สำหรับแชร์เรียบร้อยแล้ว!") {
             const toast = document.getElementById("toast");
+            toast.innerText = message;
             toast.classList.add("show");
             setTimeout(() => { toast.classList.remove("show"); }, 3000);
         }
 
-        // เปิดโหมดอ่านอย่างเดียว
+        function toggleLoading(show) {
+            document.getElementById('loading-overlay').style.display = show ? 'flex' : 'none';
+        }
+
         function enableReadOnlyUI() {
             isReadOnlyMode = true;
             document.querySelector('.note-palette').style.display = 'none';
@@ -1027,18 +1053,46 @@
                 shareBtn.className = 'dropdown-action-btn dropdown-item-share';
                 shareBtn.title = "แชร์เพลงนี้";
                 shareBtn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"></path><polyline points="16 6 12 2 8 6"></polyline><line x1="12" y1="2" x2="12" y2="15"></line></svg>';
-                shareBtn.onclick = (e) => {
+                
+                // 💡 เปลี่ยนระบบปุ่มแชร์ ให้ยิง API ไปที่ Cloudflare KV แทนการแปลงข้อความ
+                shareBtn.onclick = async (e) => {
                     e.stopPropagation();
-                    const shareObject = { name: song.name, data: song.data };
-                    const encodedStr = encodeShareData(shareObject);
-                    const shareUrl = window.location.origin + window.location.pathname + '?share=' + encodedStr;
+                    savedSongsMenu.classList.remove('show');
                     
-                    navigator.clipboard.writeText(shareUrl).then(() => {
-                        savedSongsMenu.classList.remove('show');
-                        showToast();
-                    }).catch(err => {
-                        alert("ไม่สามารถคัดลอกได้ กรุณาก๊อปปี้ลิงก์นี้:\n\n" + shareUrl);
-                    });
+                    const shareObject = { name: song.name, data: song.data };
+                    
+                    // หากเทสอยู่บน Local (เครื่องตัวเอง) จะยังส่ง API ไม่ได้
+                    if (window.location.hostname === "127.0.0.1" || window.location.hostname === "localhost" || window.location.hostname.startsWith("192.168")) {
+                        alert("การแชร์ลิงก์แบบสั้นต้องใช้งานผ่านลิงก์เว็บจริงบน Cloudflare (.pages.dev) เท่านั้นครับ กรุณากด Sync Changes ก่อน");
+                        return;
+                    }
+
+                    try {
+                        toggleLoading(true);
+                        // ยิงข้อมูลโน้ตเพลงยาวๆ ไปที่ API ของเราเพื่อสร้างลิงก์สั้น
+                        const response = await fetch('/api/save', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(shareObject)
+                        });
+                        
+                        if (!response.ok) throw new Error("Network response was not ok");
+                        
+                        const result = await response.json();
+                        const shortId = result.id;
+                        
+                        // สร้างลิงก์สั้นๆ
+                        const shareUrl = window.location.origin + window.location.pathname + '?id=' + shortId;
+                        
+                        await navigator.clipboard.writeText(shareUrl);
+                        toggleLoading(false);
+                        showToast("สร้างลิงก์สั้นและคัดลอกเรียบร้อยแล้ว!");
+                        
+                    } catch (err) {
+                        toggleLoading(false);
+                        console.error(err);
+                        alert("เกิดข้อผิดพลาดในการสร้างลิงก์แชร์ กรุณาลองใหม่อีกครั้ง");
+                    }
                 };
 
                 const delBtn = document.createElement('div');
@@ -1070,7 +1124,7 @@
         saveSongBtn.addEventListener('click', () => {
             const currentDataStr = getStaffDataString();
             if (isBoardEmpty()) {
-                alert("ห้องเพลงว่างเปล่า ไม่สามารถบันทึกได้ กรุณาใส่โน้ตก่อนครับ");
+                alert("กระดานว่างเปล่า ไม่สามารถบันทึกได้ กรุณาใส่โน้ตก่อนครับ");
                 return;
             }
 
@@ -1103,7 +1157,7 @@
         const clearNotesBtn = document.getElementById('clear-notes');
         clearNotesBtn.addEventListener('click', () => {
             if (hasUnsavedChanges()) {
-                if(confirm("มีโน้ตในห้องเพลงที่ยังไม่ได้กด 'บันทึกเพลง' หากลบตอนนี้ โน้ตจะสูญหายถาวร\n\nแน่ใจหรือไม่ว่าต้องการลบโน้ตทั้งหมด?")) {
+                if(confirm("มีโน้ตในกระดานที่ยังไม่ได้กด 'บันทึกเพลง' หากลบตอนนี้ โน้ตจะสูญหายถาวร\n\nแน่ใจหรือไม่ว่าต้องการลบโน้ตทั้งหมด?")) {
                     doClearNotes();
                 }
             } else if (!isBoardEmpty()) {
@@ -1429,15 +1483,11 @@
             "ฟํ": 1239.9, 
             "ซํ": 1368.9  
         };
-
-        const CHING_START_OFFSET = 0.0; 
-        const CHAP_START_OFFSET = 0.0;
         
         let chingBuffer, chapBuffer;
         let isAudioLoaded = false;
         
         let metronomeTimerID;
-        let nextNoteTime = 0;
         let currentBeatStep = 0; 
         
         let isPlaying = false; 
@@ -1488,7 +1538,6 @@
             osc2.connect(osc2Gain);
             osc2Gain.connect(filter); 
             
-            // 💡 เชื่อมต่อเข้า Compressor 
             filter.connect(gain);
             gain.connect(compressor); 
             
@@ -1525,9 +1574,6 @@
             }
         }
 
-        // =========================================================================
-        // 💡 ระบบควบคุมภาพและเสียงให้ตรงกันเบ็ดขาด 100% (Unified Immediate Clock)
-        // =========================================================================
         function playCurrentStep() {
             const bpm = parseInt(document.getElementById('tempo-slider').value);
             const baseDuration = 60.0 / bpm; 
@@ -1540,11 +1586,9 @@
             const slotIndex = currentBeatStep % currentTotalSlots; 
             const noteText = slots[slotIndex].innerText.trim();
 
-            // 1. บังคับไฮไลท์เปลี่ยนสีกล่องภาพทันที ณ มิลลิวินาทีนี้
             slots.forEach(s => s.classList.remove('playing'));
             if (slots[slotIndex]) slots[slotIndex].classList.add('playing');
 
-            // 2. บังคับให้เสียงขลุ่ยดังขึ้นทันที ณ วินาทีนี้ (สั่งเล่นที่ audioCtx.currentTime ปัจจุบัน)
             if (noteText && thaiFrequencies[noteText]) {
                 let dashCount = 0;
                 for (let i = 1; i < currentTotalSlots; i++) {
@@ -1561,7 +1605,6 @@
                 playFluteSound(thaiFrequencies[noteText], audioCtx.currentTime, totalDuration);
             }
 
-            // 3. บังคับให้เสียงฉิ่ง-ฉับ ดังขึ้นทันที ณ วินาทีนี้
             if (isChingActive) {
                 const rhythmType = document.getElementById('rhythm-select').value;
                 let playChing = false;
@@ -1581,7 +1624,6 @@
                 if (playChing && chingBuffer) {
                     const source = audioCtx.createBufferSource();
                     source.buffer = chingBuffer;
-                    // 💡 ส่งเข้า Master Gain
                     source.connect(masterGain);
                     source.start(audioCtx.currentTime); 
                     activeChingSource = source; 
@@ -1594,7 +1636,6 @@
                     }
                     const source = audioCtx.createBufferSource();
                     source.buffer = chapBuffer;
-                    // 💡 ส่งเข้า Master Gain
                     source.connect(masterGain);
                     source.start(audioCtx.currentTime);
                 }
@@ -1604,14 +1645,12 @@
         function playNextStep() {
             if (!isPlaying) return;
 
-            // เล่นโน้ตและไฮไลท์สเต็ปปัจจุบันทันที
             playCurrentStep();
 
             const bpm = parseInt(document.getElementById('tempo-slider').value);
             const msPerBeat = (60.0 / bpm) * 1000;
 
             currentBeatStep++;
-            // สั่งจับเวลาเพื่อวนลูปเรียกตัวเองในโน้ตตัวถัดไปตามค่า BPM
             metronomeTimerID = setTimeout(playNextStep, msPerBeat);
         }
 
@@ -1640,8 +1679,6 @@
             if (isPlaying) {
                 playBtn.innerHTML = `${pauseIcon} <span>หยุด</span>`;
                 playBtn.style.color = "#e53935"; 
-                    
-                    // 💡 ลบคำสั่งคำนวณเวลาล่วงหน้าของเก่าออก แล้วเปลี่ยนมาเรียกฟังก์ชันใหม่ตรงนี้ตัวเดียวจบครับ
                 currentBeatStep = 0; 
                 playNextStep(); 
             } else {
@@ -1701,21 +1738,29 @@
             }
         });
 
-        // 💡 ตรวจจับและโหลดเว็บ
-        window.onload = () => {
+        // 💡 เปลี่ยนระบบอ่านลิงก์แชร์ตอนเปิดเว็บ ให้ดึงข้อมูลจากฐานข้อมูลแทนการถอดรหัส URL
+        window.onload = async () => {
             const urlParams = new URLSearchParams(window.location.search);
-            const sharedDataStr = urlParams.get('share');
+            const shortId = urlParams.get('id'); // ดึงค่า ?id= ออกมา
 
-            if (sharedDataStr) {
+            if (shortId) {
                 try {
-                    const sharedSong = decodeShareData(sharedDataStr);
+                    toggleLoading(true);
+                    // ยิง API ไปขอกุญแจที่ฐานข้อมูล
+                    const response = await fetch(`/api/load?id=${shortId}`);
+                    if (!response.ok) throw new Error("ไม่พบข้อมูล");
+                    
+                    const sharedSong = await response.json();
+                    
                     currentSongName = sharedSong.name;
                     enableReadOnlyUI();
                     renderStaffData(sharedSong.data);
                     updateSongTitleUI();
+                    toggleLoading(false);
                     return; 
                 } catch (e) {
-                    alert("ลิงก์แชร์ไม่ถูกต้องหรือหมดอายุ");
+                    toggleLoading(false);
+                    alert("ลิงก์แชร์ไม่ถูกต้อง ข้อมูลอาจถูกลบหรือหมดอายุ");
                     window.location.href = window.location.origin + window.location.pathname;
                 }
             } 
