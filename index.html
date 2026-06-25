@@ -754,22 +754,44 @@
     </div>
 
     <script>
-        // 💡 ปลุกระบบการ์ดเสียงของ Safari ให้ตื่น ทันทีที่แตะหน้าจอครั้งแรก (แก้เสียงมาช้า)
-        document.body.addEventListener('touchstart', function() {
+        // 💡 1. เพิ่มตัวแปร Compressor และ Master Gain
+        let audioCtx;
+        let compressor;
+        let masterGain;
+
+        // 💡 2. สร้างฟังก์ชันกลางสำหรับตั้งค่าท่อเสียงและตัวกันเสียงแตก
+        function ensureAudioContext() {
             if (!audioCtx) {
                 window.AudioContext = window.AudioContext || window.webkitAudioContext;
                 audioCtx = new AudioContext();
+                
+                // สร้าง Compressor คุมเสียงไม่ให้แตก (Chrome)
+                compressor = audioCtx.createDynamicsCompressor();
+                compressor.threshold.value = -10;
+                compressor.ratio.value = 12;
+                compressor.attack.value = 0;
+                compressor.release.value = 0.25;
+
+                // สร้างตัวคุมวอลลุ่มหลัก (ลดเสียงลงนิดนึงให้ละมุนขึ้น)
+                masterGain = audioCtx.createGain();
+                masterGain.gain.value = 0.8;
+
+                // เชื่อมต่อ: Compressor -> MasterGain -> ลำโพงเครื่อง
+                compressor.connect(masterGain);
+                masterGain.connect(audioCtx.destination);
             }
+        }
+
+        // 💡 3. เรียกใช้ฟังก์ชันกลางตอนแตะหน้าจอ (แก้เสียงมาช้า)
+        document.body.addEventListener('touchstart', function() {
+            ensureAudioContext();
             if (audioCtx.state === 'suspended') {
                 audioCtx.resume();
             }
         }, { once: true });
         
         document.body.addEventListener('click', function() {
-            if (!audioCtx) {
-                window.AudioContext = window.AudioContext || window.webkitAudioContext;
-                audioCtx = new AudioContext();
-            }
+            ensureAudioContext();
             if (audioCtx.state === 'suspended') {
                 audioCtx.resume();
             }
@@ -1118,10 +1140,7 @@
         }
 
         async function previewNoteSound(noteText) {
-            if (!audioCtx) {
-                window.AudioContext = window.AudioContext || window.webkitAudioContext;
-                audioCtx = new AudioContext();
-            }
+            ensureAudioContext();
             if (audioCtx.state === 'suspended') {
                 await audioCtx.resume();
             }
@@ -1414,7 +1433,6 @@
         const CHING_START_OFFSET = 0.0; 
         const CHAP_START_OFFSET = 0.0;
         
-        let audioCtx;
         let chingBuffer, chapBuffer;
         let isAudioLoaded = false;
         
@@ -1470,8 +1488,9 @@
             osc2.connect(osc2Gain);
             osc2Gain.connect(filter); 
             
+            // 💡 เชื่อมต่อเข้า Compressor 
             filter.connect(gain);
-            gain.connect(audioCtx.destination);
+            gain.connect(compressor); 
             
             osc1.start(time);
             osc2.start(time);
@@ -1487,8 +1506,7 @@
         async function loadAudioFiles() {
             if (isAudioLoaded) return;
             if (!audioCtx) {
-                window.AudioContext = window.AudioContext || window.webkitAudioContext;
-                audioCtx = new AudioContext();
+                ensureAudioContext();
             }
             
             try {
@@ -1563,7 +1581,8 @@
                 if (playChing && chingBuffer) {
                     const source = audioCtx.createBufferSource();
                     source.buffer = chingBuffer;
-                    source.connect(audioCtx.destination);
+                    // 💡 ส่งเข้า Master Gain
+                    source.connect(masterGain);
                     source.start(audioCtx.currentTime); 
                     activeChingSource = source; 
                 }
@@ -1575,7 +1594,8 @@
                     }
                     const source = audioCtx.createBufferSource();
                     source.buffer = chapBuffer;
-                    source.connect(audioCtx.destination);
+                    // 💡 ส่งเข้า Master Gain
+                    source.connect(masterGain);
                     source.start(audioCtx.currentTime);
                 }
             }
@@ -1604,8 +1624,7 @@
 
         playBtn.addEventListener('click', async () => {
             if (!audioCtx) {
-                window.AudioContext = window.AudioContext || window.webkitAudioContext;
-                audioCtx = new AudioContext();
+                ensureAudioContext();
             }
             if (audioCtx.state === 'suspended') {
                 await audioCtx.resume();
@@ -1646,8 +1665,7 @@
 
         chingToggleBtn.addEventListener('click', async () => {
             if (!audioCtx) {
-                window.AudioContext = window.AudioContext || window.webkitAudioContext;
-                audioCtx = new AudioContext();
+                ensureAudioContext();
             }
             if (audioCtx.state === 'suspended') {
                 await audioCtx.resume();
