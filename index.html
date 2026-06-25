@@ -1070,7 +1070,7 @@
         saveSongBtn.addEventListener('click', () => {
             const currentDataStr = getStaffDataString();
             if (isBoardEmpty()) {
-                alert("กระดานว่างเปล่า ไม่สามารถบันทึกได้ กรุณาใส่โน้ตก่อนครับ");
+                alert("ห้องเพลงว่างเปล่า ไม่สามารถบันทึกได้ กรุณาใส่โน้ตก่อนครับ");
                 return;
             }
 
@@ -1103,7 +1103,7 @@
         const clearNotesBtn = document.getElementById('clear-notes');
         clearNotesBtn.addEventListener('click', () => {
             if (hasUnsavedChanges()) {
-                if(confirm("มีโน้ตในกระดานที่ยังไม่ได้กด 'บันทึกเพลง' หากลบตอนนี้ โน้ตจะสูญหายถาวร\n\nแน่ใจหรือไม่ว่าต้องการลบโน้ตทั้งหมด?")) {
+                if(confirm("มีโน้ตในห้องเพลงที่ยังไม่ได้กด 'บันทึกเพลง' หากลบตอนนี้ โน้ตจะสูญหายถาวร\n\nแน่ใจหรือไม่ว่าต้องการลบโน้ตทั้งหมด?")) {
                     doClearNotes();
                 }
             } else if (!isBoardEmpty()) {
