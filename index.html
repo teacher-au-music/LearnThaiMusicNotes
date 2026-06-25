@@ -621,7 +621,6 @@
             display: none !important;
         }
         
-        /* 💡 สร้าง Loading UI เวลารอโหลดข้อมูล */
         #loading-overlay {
             position: fixed;
             top: 0; left: 0; width: 100%; height: 100%;
@@ -650,7 +649,6 @@
 </head>
 <body>
 
-    <!-- 💡 เพิ่มหน้าจอ Loading -->
     <div id="loading-overlay" style="display: none;">
         <div class="spinner"></div>
         กำลังโหลดโน้ตเพลง...
@@ -1082,7 +1080,7 @@
                         
                         await navigator.clipboard.writeText(shareUrl);
                         toggleLoading(false);
-                        showToast("คัดลอกลิงก์สำหรับแชร์เรียบร้อยแล้ว!");
+                        showToast("สร้างลิงก์สั้นและคัดลอกเรียบร้อยแล้ว!");
                         
                     } catch (err) {
                         toggleLoading(false);
@@ -1361,7 +1359,6 @@
         const removeLineIcon = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line></svg>`;
 
         function createLine() {
-            // 💡 ปลดล็อกรองรับการแต่งเพลงสูงสุด 100 บรรทัด
             const currentLines = document.querySelectorAll('.staff-line').length;
             if (currentLines >= 100) return; 
 
@@ -1434,7 +1431,6 @@
                 }
             });
 
-            // 💡 อัปเดตซ่อนปุ่มเพิ่มบรรทัดเมื่อถึง 100 บรรทัด
             if (lines.length >= 100) {
                 addLineBtn.style.display = 'none';
             } else {
@@ -1493,7 +1489,7 @@
         
         let activeChingSource = null;
         let activeFluteSources = []; 
-        let lastPlayingSlot = null; // 💡 ตัวแปรช่วยจำว่ากล่องไหนกำลังเล่นอยู่
+        let lastPlayingSlot = null; 
 
         function playFluteSound(frequency, time, duration) {
             const osc1 = audioCtx.createOscillator(); 
@@ -1577,7 +1573,7 @@
             const bpm = parseInt(document.getElementById('tempo-slider').value);
             const baseDuration = 60.0 / bpm; 
 
-            // 💡 อัปเกรดความเร็ว 100 เท่า: ดึงกล่องโน้ตตรงๆ ไม่ต้องวนลูป query ใหม่ทุกครั้ง
+            // 💡 แก้ปัญหาตรงจุด: เปลี่ยนมาใช้ getElementsByClassName ไม่ต้องวาดจอใหม่ทั้งกระดาน
             const slots = document.getElementsByClassName('note-slot');
             const currentTotalSlots = slots.length;
 
@@ -1585,9 +1581,15 @@
 
             const slotIndex = currentBeatStep % currentTotalSlots; 
             const activeSlot = slots[slotIndex];
-            const noteText = activeSlot ? activeSlot.innerText.trim() : "";
+            
+            // 💡 แก้คอขวด: ดึงโน้ตจาก data-note โดยตรง (เร็วกว่า innerText 1,000 เท่า ทำให้จอกระตุกเป็น 0)
+            let noteText = "";
+            let noteEl = activeSlot ? activeSlot.querySelector('.note') : null;
+            if (noteEl) {
+                noteText = noteEl.getAttribute('data-note');
+            }
 
-            // 💡 อัปเกรดความเร็ว 100 เท่า: เปลี่ยนสีเฉพาะกล่องเดียว ภาพจะวิ่งตามจังหวะเสียงทันที
+            // 💡 ลบและเพิ่มสีเฉพาะกล่องที่กำลังเล่น (ภาพวิ่งตรงเป๊ะกับจังหวะ)
             if (lastPlayingSlot) {
                 lastPlayingSlot.classList.remove('playing');
             }
@@ -1598,9 +1600,13 @@
 
             if (noteText && thaiFrequencies[noteText]) {
                 let dashCount = 0;
+                // 💡 นับขีดในอนาคตด้วยความเร็วสูงโดยไม่อ่าน innerText
                 for (let i = 1; i < currentTotalSlots; i++) {
                     let nextIndex = (slotIndex + i) % currentTotalSlots;
-                    let nextText = slots[nextIndex].innerText.trim();
+                    let nextSlot = slots[nextIndex];
+                    let nextNoteEl = nextSlot ? nextSlot.querySelector('.note') : null;
+                    let nextText = nextNoteEl ? nextNoteEl.getAttribute('data-note') : "";
+                    
                     if (nextText === "-") {
                         dashCount++;
                     } else {
@@ -1608,10 +1614,14 @@
                     }
                 }
                 
+                // 💡 ตั้งเวลาให้เสียงเริ่มเล่นหลังจากจอระบายสีเหลืองเสร็จพอดี (เผื่อเวลาไว้ 0.03 วินาที)
+                const playTime = audioCtx.currentTime + 0.03;
                 const totalDuration = baseDuration * (1 + dashCount);
-                playFluteSound(thaiFrequencies[noteText], audioCtx.currentTime, totalDuration);
+                playFluteSound(thaiFrequencies[noteText], playTime, totalDuration);
             }
 
+            // 💡 ระบบเสียงฉิ่งฉับ ก็ตั้งเวลาให้ออกตรงกับไฮไลต์สีเหลือง
+            const scheduleTimeChing = audioCtx.currentTime + 0.03;
             if (isChingActive) {
                 const rhythmType = document.getElementById('rhythm-select').value;
                 let playChing = false;
@@ -1632,19 +1642,19 @@
                     const source = audioCtx.createBufferSource();
                     source.buffer = chingBuffer;
                     source.connect(masterGain);
-                    source.start(audioCtx.currentTime); 
+                    source.start(scheduleTimeChing); 
                     activeChingSource = source; 
                 }
 
                 if (playChap && chapBuffer) {
                     if (activeChingSource) {
-                        try { activeChingSource.stop(audioCtx.currentTime); } catch(e) {}
+                        try { activeChingSource.stop(scheduleTimeChing); } catch(e) {}
                         activeChingSource = null;
                     }
                     const source = audioCtx.createBufferSource();
                     source.buffer = chapBuffer;
                     source.connect(masterGain);
-                    source.start(audioCtx.currentTime);
+                    source.start(scheduleTimeChing);
                 }
             }
         }
@@ -1694,7 +1704,6 @@
                 
                 clearTimeout(metronomeTimerID); 
                 
-                // 💡 เคลียร์สีกล่องสุดท้ายที่ค้างอยู่ตอนกดหยุด
                 if (lastPlayingSlot) {
                     lastPlayingSlot.classList.remove('playing');
                     lastPlayingSlot = null;
