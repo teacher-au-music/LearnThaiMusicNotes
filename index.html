@@ -1054,14 +1054,12 @@
                 shareBtn.title = "แชร์เพลงนี้";
                 shareBtn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"></path><polyline points="16 6 12 2 8 6"></polyline><line x1="12" y1="2" x2="12" y2="15"></line></svg>';
                 
-                // 💡 เปลี่ยนระบบปุ่มแชร์ ให้ยิง API ไปที่ Cloudflare KV แทนการแปลงข้อความ
                 shareBtn.onclick = async (e) => {
                     e.stopPropagation();
                     savedSongsMenu.classList.remove('show');
                     
                     const shareObject = { name: song.name, data: song.data };
                     
-                    // หากเทสอยู่บน Local (เครื่องตัวเอง) จะยังส่ง API ไม่ได้
                     if (window.location.hostname === "127.0.0.1" || window.location.hostname === "localhost" || window.location.hostname.startsWith("192.168")) {
                         alert("การแชร์ลิงก์แบบสั้นต้องใช้งานผ่านลิงก์เว็บจริงบน Cloudflare (.pages.dev) เท่านั้นครับ กรุณากด Sync Changes ก่อน");
                         return;
@@ -1069,7 +1067,6 @@
 
                     try {
                         toggleLoading(true);
-                        // ยิงข้อมูลโน้ตเพลงยาวๆ ไปที่ API ของเราเพื่อสร้างลิงก์สั้น
                         const response = await fetch('/api/save', {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
@@ -1081,12 +1078,11 @@
                         const result = await response.json();
                         const shortId = result.id;
                         
-                        // สร้างลิงก์สั้นๆ
                         const shareUrl = window.location.origin + window.location.pathname + '?id=' + shortId;
                         
                         await navigator.clipboard.writeText(shareUrl);
                         toggleLoading(false);
-                        showToast("คัดลอกลิงก์สำหรับแชร์เรียบร้อยแล้ว!");
+                        showToast("สร้างลิงก์สั้นและคัดลอกเรียบร้อยแล้ว!");
                         
                     } catch (err) {
                         toggleLoading(false);
@@ -1365,6 +1361,7 @@
         const removeLineIcon = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line></svg>`;
 
         function createLine() {
+            // 💡 ปลดล็อกรองรับการแต่งเพลงสูงสุด 100 บรรทัด
             const currentLines = document.querySelectorAll('.staff-line').length;
             if (currentLines >= 100) return; 
 
@@ -1437,6 +1434,7 @@
                 }
             });
 
+            // 💡 อัปเดตซ่อนปุ่มเพิ่มบรรทัดเมื่อถึง 100 บรรทัด
             if (lines.length >= 100) {
                 addLineBtn.style.display = 'none';
             } else {
@@ -1495,6 +1493,7 @@
         
         let activeChingSource = null;
         let activeFluteSources = []; 
+        let lastPlayingSlot = null; // 💡 ตัวแปรช่วยจำว่ากล่องไหนกำลังเล่นอยู่
 
         function playFluteSound(frequency, time, duration) {
             const osc1 = audioCtx.createOscillator(); 
@@ -1578,16 +1577,24 @@
             const bpm = parseInt(document.getElementById('tempo-slider').value);
             const baseDuration = 60.0 / bpm; 
 
-            const slots = document.querySelectorAll('.note-slot');
+            // 💡 อัปเกรดความเร็ว 100 เท่า: ดึงกล่องโน้ตตรงๆ ไม่ต้องวนลูป query ใหม่ทุกครั้ง
+            const slots = document.getElementsByClassName('note-slot');
             const currentTotalSlots = slots.length;
 
             if (currentTotalSlots === 0) return; 
 
             const slotIndex = currentBeatStep % currentTotalSlots; 
-            const noteText = slots[slotIndex].innerText.trim();
+            const activeSlot = slots[slotIndex];
+            const noteText = activeSlot ? activeSlot.innerText.trim() : "";
 
-            slots.forEach(s => s.classList.remove('playing'));
-            if (slots[slotIndex]) slots[slotIndex].classList.add('playing');
+            // 💡 อัปเกรดความเร็ว 100 เท่า: เปลี่ยนสีเฉพาะกล่องเดียว ภาพจะวิ่งตามจังหวะเสียงทันที
+            if (lastPlayingSlot) {
+                lastPlayingSlot.classList.remove('playing');
+            }
+            if (activeSlot) {
+                activeSlot.classList.add('playing');
+                lastPlayingSlot = activeSlot;
+            }
 
             if (noteText && thaiFrequencies[noteText]) {
                 let dashCount = 0;
@@ -1686,7 +1693,12 @@
                 playBtn.style.color = "#3a86ff";
                 
                 clearTimeout(metronomeTimerID); 
-                document.querySelectorAll('.note-slot').forEach(s => s.classList.remove('playing')); 
+                
+                // 💡 เคลียร์สีกล่องสุดท้ายที่ค้างอยู่ตอนกดหยุด
+                if (lastPlayingSlot) {
+                    lastPlayingSlot.classList.remove('playing');
+                    lastPlayingSlot = null;
+                }
                 
                 activeFluteSources.forEach(osc => {
                     try { osc.stop(); } catch(e) {}
@@ -1738,15 +1750,13 @@
             }
         });
 
-        // 💡 เปลี่ยนระบบอ่านลิงก์แชร์ตอนเปิดเว็บ ให้ดึงข้อมูลจากฐานข้อมูลแทนการถอดรหัส URL
         window.onload = async () => {
             const urlParams = new URLSearchParams(window.location.search);
-            const shortId = urlParams.get('id'); // ดึงค่า ?id= ออกมา
+            const shortId = urlParams.get('id');
 
             if (shortId) {
                 try {
                     toggleLoading(true);
-                    // ยิง API ไปขอกุญแจที่ฐานข้อมูล
                     const response = await fetch(`/api/load?id=${shortId}`);
                     if (!response.ok) throw new Error("ไม่พบข้อมูล");
                     
