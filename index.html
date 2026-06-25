@@ -1366,7 +1366,7 @@
 
         function createLine() {
             const currentLines = document.querySelectorAll('.staff-line').length;
-            if (currentLines >= 10) return; 
+            if (currentLines >= 100) return; 
 
             const lineDiv = document.createElement('div');
             lineDiv.className = 'staff-line';
@@ -1437,7 +1437,7 @@
                 }
             });
 
-            if (lines.length >= 10) {
+            if (lines.length >= 100) {
                 addLineBtn.style.display = 'none';
             } else {
                 addLineBtn.style.display = 'inline-flex';
