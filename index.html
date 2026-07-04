@@ -754,7 +754,7 @@
         <div class="control-group tempo-control">
             <span class="control-label">ความช้า-เร็ว</span>
             <span class="tempo-value-display" id="tempo-value">90</span>
-            <input type="range" id="tempo-slider" min="40" max="300" value="90">
+            <input type="range" id="tempo-slider" min="20" max="200" value="90">
         </div>
 
         <div class="control-group-vertical" id="right-controls-wrapper">
@@ -1570,11 +1570,15 @@
         }
 
         function playCurrentStep() {
-            const bpm = parseInt(document.getElementById('tempo-slider').value);
+    // ดึงค่าจากสไลเดอร์ปัจจุบัน (20 - 200)
+            const sliderValue = parseInt(document.getElementById('tempo-slider').value);
+    
+    // 💡 ใช้สมการแมปปิ้งความเร็วแอปพลิเคชัน: คูณ 2 เพื่อแปลงเป็นอัตราจังหวะจริง
+            const bpm = sliderValue * 2; 
             const baseDuration = 60.0 / bpm; 
 
-            // 💡 แก้ปัญหาตรงจุด: เปลี่ยนมาใช้ getElementsByClassName ไม่ต้องวาดจอใหม่ทั้งกระดาน
             const slots = document.getElementsByClassName('note-slot');
+    // ... โค้ดส่วนอื่น ๆ ด้านในฟังก์ชันนี้ปล่อยไว้เหมือนเดิม ...
             const currentTotalSlots = slots.length;
 
             if (currentTotalSlots === 0) return; 
@@ -1664,7 +1668,11 @@
 
             playCurrentStep();
 
-            const bpm = parseInt(document.getElementById('tempo-slider').value);
+            // ดึงค่าจากสไลเดอร์ปัจจุบัน (20 - 200)
+            const sliderValue = parseInt(document.getElementById('tempo-slider').value);
+    
+            // 💡 ปรับตัวคำนวณเวลาหน่วงของจังหวะถัดไปให้ตรงกัน
+            const bpm = sliderValue * 2;
             const msPerBeat = (60.0 / bpm) * 1000;
 
             currentBeatStep++;
