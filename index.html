@@ -1797,6 +1797,53 @@
             renderSavedSongs(); 
         };
 
+        document.addEventListener('contextmenu', function(event) {
+            event.preventDefault();
+        });
+
+        // 2. ป้องกันการกดเซฟรูปภาพและเสียงโดยตรงผ่านการลากวาง
+        document.addEventListener('dragstart', function(event) {
+            event.preventDefault();
+        });
+
+        // 3. บล็อกปุ่ม F12 และชุดปุ่มลัดเจาะระบบ (Developer Tools) ทั้ง Windows และ macOS
+        document.addEventListener('keydown', function(e) {
+            // บล็อกปุ่ม F12 (ทุก OS)
+            if (e.keyCode === 123) {
+                e.preventDefault();
+                return false;
+            }
+
+            // บล็อก Ctrl+Shift+I (Windows/Linux) หรือ Cmd+Option+I (macOS) - เปิดหน้าต่างตรวจสอบโค้ด
+            if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.keyCode === 73) {
+                e.preventDefault();
+                return false;
+            }
+
+            // บล็อก Ctrl+Shift+C (Windows/Linux) หรือ Cmd+Option+C (macOS) - เลือกองค์ประกอบบนหน้าจอ
+            if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.keyCode === 67) {
+                e.preventDefault();
+                return false;
+            }
+
+            // บล็อก Ctrl+Shift+J (Windows/Linux) หรือ Cmd+Option+J (macOS) - เปิดหน้าต่าง Console
+            if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.keyCode === 74) {
+                e.preventDefault();
+                return false;
+            }
+
+            // บล็อก Ctrl+U (Windows/Linux) หรือ Cmd+Option+U (macOS) - ดูซอร์สโค้ดดิบ (View Source)
+            if ((e.ctrlKey || e.metaKey) && e.keyCode === 85) {
+                e.preventDefault();
+                return false;
+            }
+
+            // บล็อก Ctrl+S (Windows/Linux) หรือ Cmd+S (macOS) - สั่งบันทึกหน้าเว็บลงเครื่องคอมพิวเตอร์
+            if ((e.ctrlKey || e.metaKey) && e.keyCode === 83) {
+                e.preventDefault();
+                return false;
+            }
+        });
     </script>
 </body>
 </html>
