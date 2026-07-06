@@ -599,7 +599,7 @@
         }
         .toast-message {
             position: fixed;
-            bottom: -100px;
+            bottom: -200px;
             left: 50%;
             transform: translateX(-50%);
             background: rgba(51, 51, 51, 0.9);
@@ -784,42 +784,48 @@
     </div>
 
     <script>
-        let audioCtx;
-        let compressor;
-        let masterGain;
+        // 💡 1. ระบบจัดการเสียง และ ระบบเจาะเกราะ Safari
+        let audioCtx = null;
+        let masterGain = null;
+        let compressor = null;
 
         function ensureAudioContext() {
-            if (!audioCtx) {
-                window.AudioContext = window.AudioContext || window.webkitAudioContext;
-                audioCtx = new AudioContext();
-                
-                compressor = audioCtx.createDynamicsCompressor();
-                compressor.threshold.value = -10;
-                compressor.ratio.value = 12;
-                compressor.attack.value = 0;
-                compressor.release.value = 0.25;
-
-                masterGain = audioCtx.createGain();
-                masterGain.gain.value = 0.8;
-
-                compressor.connect(masterGain);
-                masterGain.connect(audioCtx.destination);
+            if (audioCtx) {
+                if (audioCtx.state === 'suspended') audioCtx.resume();
+                return;
             }
+
+            const AudioContext = window.AudioContext || window.webkitAudioContext;
+            audioCtx = new AudioContext();
+
+            // สร้าง Compressor กันเสียงแตก (Chrome)
+            compressor = audioCtx.createDynamicsCompressor();
+            compressor.threshold.value = -10;
+            compressor.ratio.value = 12;
+            compressor.attack.value = 0;
+            compressor.release.value = 0.25;
+
+            // สร้าง Master Gain
+            masterGain = audioCtx.createGain();
+            masterGain.gain.value = 0.8;
+
+            compressor.connect(masterGain);
+            masterGain.connect(audioCtx.destination);
+
+            // 💡 ทริคเจาะเกราะ Safari: สั่งสร้างและเล่นเสียงว่าง 1 มิลลิวินาที แบบ Synchronous ทันทีที่แตะจอ
+            const osc = audioCtx.createOscillator();
+            const silentGain = audioCtx.createGain();
+            silentGain.gain.value = 0;
+            osc.connect(silentGain);
+            silentGain.connect(audioCtx.destination);
+            osc.start(0);
+            osc.stop(0.01);
         }
 
-        document.body.addEventListener('touchstart', function() {
-            ensureAudioContext();
-            if (audioCtx.state === 'suspended') {
-                audioCtx.resume();
-            }
-        }, { once: true });
-        
-        document.body.addEventListener('click', function() {
-            ensureAudioContext();
-            if (audioCtx.state === 'suspended') {
-                audioCtx.resume();
-            }
-        }, { once: true });
+        // ผูก Event Listener แบบ Global สกัดทุกการคลิกและการแตะเพื่อกระชากการ์ดเสียงให้ตื่นเสมอ
+        ['mousedown', 'touchstart', 'keydown'].forEach(event => {
+            document.addEventListener(event, ensureAudioContext, { once: true, capture: true });
+        });
 
         // =========================================================================
         let isReadOnlyMode = false;
