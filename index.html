@@ -1577,15 +1577,11 @@
         }
 
         function playCurrentStep() {
-    // ดึงค่าจากสไลเดอร์ปัจจุบัน (20 - 200)
             const sliderValue = parseInt(document.getElementById('tempo-slider').value);
-    
-    // 💡 ใช้สมการแมปปิ้งความเร็วแอปพลิเคชัน: คูณ 2 เพื่อแปลงเป็นอัตราจังหวะจริง
             const bpm = sliderValue * 2; 
             const baseDuration = 60.0 / bpm; 
 
             const slots = document.getElementsByClassName('note-slot');
-    // ... โค้ดส่วนอื่น ๆ ด้านในฟังก์ชันนี้ปล่อยไว้เหมือนเดิม ...
             const currentTotalSlots = slots.length;
 
             if (currentTotalSlots === 0) return; 
@@ -1593,25 +1589,30 @@
             const slotIndex = currentBeatStep % currentTotalSlots; 
             const activeSlot = slots[slotIndex];
             
-            // 💡 แก้คอขวด: ดึงโน้ตจาก data-note โดยตรง (เร็วกว่า innerText 1,000 เท่า ทำให้จอกระตุกเป็น 0)
             let noteText = "";
             let noteEl = activeSlot ? activeSlot.querySelector('.note') : null;
             if (noteEl) {
                 noteText = noteEl.getAttribute('data-note');
             }
 
-            // 💡 ลบและเพิ่มสีเฉพาะกล่องที่กำลังเล่น (ภาพวิ่งตรงเป๊ะกับจังหวะ)
-            if (lastPlayingSlot) {
-                lastPlayingSlot.classList.remove('playing');
-            }
-            if (activeSlot) {
-                activeSlot.classList.add('playing');
-                lastPlayingSlot = activeSlot;
-            }
+            // 💡 1. กำหนดตารางเวลาเสียงล่วงหน้า (Lookahead) 0.05 วินาที เพื่อให้ฮาร์ดแวร์ประมวลผลทัน
+            const exactPlayTime = audioCtx.currentTime + 0.05;
 
+            // 💡 2. หน่วงเวลาการเปลี่ยนสีตัวอ่าน (UI) ให้เกิดขึ้นพร้อมกับเสียงเป๊ะๆ
+            setTimeout(() => {
+                if (!isPlaying) return;
+                if (lastPlayingSlot) {
+                    lastPlayingSlot.classList.remove('playing');
+                }
+                if (activeSlot) {
+                    activeSlot.classList.add('playing');
+                    lastPlayingSlot = activeSlot;
+                }
+            }, 50); // 50ms = 0.05s
+
+            // 💡 3. ส่งเสียงขลุ่ยเข้าคิวตามเวลา exactPlayTime
             if (noteText && thaiFrequencies[noteText]) {
                 let dashCount = 0;
-                // 💡 นับขีดในอนาคตด้วยความเร็วสูงโดยไม่อ่าน innerText
                 for (let i = 1; i < currentTotalSlots; i++) {
                     let nextIndex = (slotIndex + i) % currentTotalSlots;
                     let nextSlot = slots[nextIndex];
@@ -1625,14 +1626,11 @@
                     }
                 }
                 
-                // 💡 ตั้งเวลาให้เสียงเริ่มเล่นหลังจากจอระบายสีเหลืองเสร็จพอดี (เผื่อเวลาไว้ 0.03 วินาที)
-                const playTime = audioCtx.currentTime + 0.03;
                 const totalDuration = baseDuration * (1 + dashCount);
-                playFluteSound(thaiFrequencies[noteText], playTime, totalDuration);
+                playFluteSound(thaiFrequencies[noteText], exactPlayTime, totalDuration);
             }
 
-            // 💡 ระบบเสียงฉิ่งฉับ ก็ตั้งเวลาให้ออกตรงกับไฮไลต์สีเหลือง
-            const scheduleTimeChing = audioCtx.currentTime + 0.03;
+            // 💡 4. ส่งเสียงฉิ่ง-ฉับเข้าคิวตามเวลา exactPlayTime
             if (isChingActive) {
                 const rhythmType = document.getElementById('rhythm-select').value;
                 let playChing = false;
@@ -1653,19 +1651,19 @@
                     const source = audioCtx.createBufferSource();
                     source.buffer = chingBuffer;
                     source.connect(masterGain);
-                    source.start(scheduleTimeChing); 
+                    source.start(exactPlayTime); 
                     activeChingSource = source; 
                 }
 
                 if (playChap && chapBuffer) {
                     if (activeChingSource) {
-                        try { activeChingSource.stop(scheduleTimeChing); } catch(e) {}
+                        try { activeChingSource.stop(exactPlayTime); } catch(e) {}
                         activeChingSource = null;
                     }
                     const source = audioCtx.createBufferSource();
                     source.buffer = chapBuffer;
                     source.connect(masterGain);
-                    source.start(scheduleTimeChing);
+                    source.start(exactPlayTime);
                 }
             }
         }
@@ -1673,12 +1671,15 @@
         function playNextStep() {
             if (!isPlaying) return;
 
+            // 💡 5. ระบบ Gatekeeper: ถ้าการ์ดเสียงหลับ หรือไฟล์ยังโหลดไม่เสร็จ ตัวอ่านจะหยุดรอทันที
+            if (!audioCtx || audioCtx.state !== 'running' || !isAudioLoaded) {
+                metronomeTimerID = setTimeout(playNextStep, 50); // เช็คซ้ำทุกๆ 50ms จนกว่าจะพร้อม
+                return;
+            }
+
             playCurrentStep();
 
-            // ดึงค่าจากสไลเดอร์ปัจจุบัน (20 - 200)
             const sliderValue = parseInt(document.getElementById('tempo-slider').value);
-    
-            // 💡 ปรับตัวคำนวณเวลาหน่วงของจังหวะถัดไปให้ตรงกัน
             const bpm = sliderValue * 2;
             const msPerBeat = (60.0 / bpm) * 1000;
 
