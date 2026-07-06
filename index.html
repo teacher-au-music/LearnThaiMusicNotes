@@ -1576,7 +1576,7 @@
             }
         }
 
-        function playCurrentStep() {
+        function playCurrentStep(exactPlayTime) {
             const sliderValue = parseInt(document.getElementById('tempo-slider').value);
             const bpm = sliderValue * 2; 
             const baseDuration = 60.0 / bpm; 
@@ -1595,10 +1595,10 @@
                 noteText = noteEl.getAttribute('data-note');
             }
 
-            // 💡 1. กำหนดตารางเวลาเสียงล่วงหน้า (Lookahead) 0.05 วินาที เพื่อให้ฮาร์ดแวร์ประมวลผลทัน
-            const exactPlayTime = audioCtx.currentTime + 0.05;
+            // 💡 หน่วงเวลาการเปลี่ยนสีตัวอ่าน (UI) ให้เกิดขึ้นพร้อมกับเวลาเสียงเป๊ะๆ
+            let uiWaitTime = (exactPlayTime - audioCtx.currentTime) * 1000;
+            if (uiWaitTime < 0) uiWaitTime = 0;
 
-            // 💡 2. หน่วงเวลาการเปลี่ยนสีตัวอ่าน (UI) ให้เกิดขึ้นพร้อมกับเสียงเป๊ะๆ
             setTimeout(() => {
                 if (!isPlaying) return;
                 if (lastPlayingSlot) {
@@ -1608,9 +1608,9 @@
                     activeSlot.classList.add('playing');
                     lastPlayingSlot = activeSlot;
                 }
-            }, 50); // 50ms = 0.05s
+            }, uiWaitTime);
 
-            // 💡 3. ส่งเสียงขลุ่ยเข้าคิวตามเวลา exactPlayTime
+            // 💡 ส่งเสียงขลุ่ยเข้าคิว
             if (noteText && thaiFrequencies[noteText]) {
                 let dashCount = 0;
                 for (let i = 1; i < currentTotalSlots; i++) {
@@ -1630,7 +1630,7 @@
                 playFluteSound(thaiFrequencies[noteText], exactPlayTime, totalDuration);
             }
 
-            // 💡 4. ส่งเสียงฉิ่ง-ฉับเข้าคิวตามเวลา exactPlayTime
+            // 💡 ส่งเสียงฉิ่ง-ฉับเข้าคิว
             if (isChingActive) {
                 const rhythmType = document.getElementById('rhythm-select').value;
                 let playChing = false;
@@ -1671,20 +1671,35 @@
         function playNextStep() {
             if (!isPlaying) return;
 
-            // 💡 5. ระบบ Gatekeeper: ถ้าการ์ดเสียงหลับ หรือไฟล์ยังโหลดไม่เสร็จ ตัวอ่านจะหยุดรอทันที
+            // ระบบ Gatekeeper รอให้เสียงพร้อม
             if (!audioCtx || audioCtx.state !== 'running' || !isAudioLoaded) {
-                metronomeTimerID = setTimeout(playNextStep, 50); // เช็คซ้ำทุกๆ 50ms จนกว่าจะพร้อม
+                metronomeTimerID = setTimeout(playNextStep, 50); 
                 return;
             }
 
-            playCurrentStep();
-
             const sliderValue = parseInt(document.getElementById('tempo-slider').value);
             const bpm = sliderValue * 2;
-            const msPerBeat = (60.0 / bpm) * 1000;
+            const secondsPerBeat = 60.0 / bpm;
+
+            // 💡 1. สั่งเล่นโน้ตปัจจุบัน โดยส่ง "เวลาในอนาคตที่คำนวณไว้แล้ว" ไปให้
+            playCurrentStep(nextNoteTime);
 
             currentBeatStep++;
-            metronomeTimerID = setTimeout(playNextStep, msPerBeat);
+
+            // 💡 2. บวกเวลาเป้าหมายสำหรับโน้ตตัวถัดไป
+            nextNoteTime += secondsPerBeat;
+
+            // 💡 3. คำนวณเวลาที่ต้องรอ (หักลบเวลาที่เบราว์เซอร์ทำงานอืดไปแล้ว)
+            let waitTime = (nextNoteTime - audioCtx.currentTime) * 1000;
+
+            // ป้องกันกรณีเบราว์เซอร์ค้างหนักจนเวลาติดลบ
+            if (waitTime < 0) {
+                waitTime = 0;
+                nextNoteTime = audioCtx.currentTime + 0.05; // รีเซ็ตนาฬิกาใหม่
+            }
+
+            // เรียกโน้ตตัวถัดไปตามเวลาที่ชดเชยแล้ว
+            metronomeTimerID = setTimeout(playNextStep, waitTime);
         }
 
         const playBtn = document.getElementById('play-btn');
@@ -1695,9 +1710,7 @@
         const tempoValueDisplay = document.getElementById('tempo-value');
 
         playBtn.addEventListener('click', async () => {
-            if (!audioCtx) {
-                ensureAudioContext();
-            }
+            ensureAudioContext();
             if (audioCtx.state === 'suspended') {
                 await audioCtx.resume();
             }
@@ -1712,13 +1725,17 @@
             if (isPlaying) {
                 playBtn.innerHTML = `${pauseIcon} <span>หยุด</span>`;
                 playBtn.style.color = "#e53935"; 
+                
                 currentBeatStep = 0; 
+                // 💡 เซ็ตเวลาเริ่มต้นให้โน้ตตัวแรก (เผื่อเวลาประมวลผลไว้ 0.05 วิ)
+                nextNoteTime = audioCtx.currentTime + 0.05;
                 playNextStep(); 
             } else {
                 playBtn.innerHTML = `${playIcon} <span>เล่น</span>`;
                 playBtn.style.color = "#3a86ff";
                 
                 clearTimeout(metronomeTimerID); 
+                document.querySelectorAll('.note-slot').forEach(s => s.classList.remove('playing')); 
                 
                 if (lastPlayingSlot) {
                     lastPlayingSlot.classList.remove('playing');
