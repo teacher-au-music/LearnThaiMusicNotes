@@ -8,6 +8,13 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai+Looped:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     
+    <!-- ========================================================================= -->
+    <!-- แท็กตั้งค่าไอคอนแอปเวลาเพิ่มลงหน้าจอโฮม (Homescreen Icon) และ Favicon แถบแท็บเบราว์เซอร์ -->
+    <!-- ========================================================================= -->
+    <link rel="apple-touch-icon" sizes="180x180" href="app-icon.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="app-icon.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="app-icon.png">
+    
     <style>
         :root {
             --primary-blue: #a3c4f3;
@@ -599,7 +606,7 @@
         }
         .toast-message {
             position: fixed;
-            bottom: -200px;
+            bottom: -100px;
             left: 50%;
             transform: translateX(-50%);
             background: rgba(51, 51, 51, 0.9);
@@ -778,54 +785,54 @@
 
     <div class="watermark-footer">
         พัฒนาและออกแบบโดย นายศุภวิชญ์ สุวรรณนิกวณิช<br>
-        ผศ.ดร.ณัฐพงศ์ แก้วสุวรรณ์ [อาจารย์ผู้ร่วมพัฒนา] | ผศ.ดร. วิชฏาลัมพก์ เหล่าวานิช [อาจารย์ที่ปรึกษา]<br>
+        อาจารย์ผู้ร่วมพัฒนา: ผศ.ดร.ณัฐพงศ์ แก้วสุวรรณ์ | อาจารย์ที่ปรึกษา: ผศ.ดร. วิชฏาลัมพก์ เหล่าวานิช<br>
         เพื่อการศึกษาและเป็นสื่อการเรียนการสอนดนตรีไทย<br>
         © 2026 All Rights Reserved.
     </div>
 
     <script>
-        // 💡 1. ระบบจัดการเสียง และ ระบบเจาะเกราะ Safari
-        let audioCtx = null;
-        let masterGain = null;
-        let compressor = null;
+        let audioCtx;
+        let compressor;
+        let masterGain;
+        let percussionGain; // เพิ่มตัวควบคุมเสียงฉิ่งฉับ
 
         function ensureAudioContext() {
-            if (audioCtx) {
-                if (audioCtx.state === 'suspended') audioCtx.resume();
-                return;
+            if (!audioCtx) {
+                window.AudioContext = window.AudioContext || window.webkitAudioContext;
+                audioCtx = new AudioContext();
+                
+                compressor = audioCtx.createDynamicsCompressor();
+                compressor.threshold.value = -15; // ปรับลงเพื่อให้เริ่มบีบอัดเร็วขึ้น
+                compressor.knee.value = 30; // เพิ่มความนุ่มนวลของการบีบอัด
+                compressor.ratio.value = 12;
+                compressor.attack.value = 0.003; // บีบอัดเร็วขึ้นระดับมิลลิวินาที ป้องกัน Peak
+                compressor.release.value = 0.25;
+
+                masterGain = audioCtx.createGain();
+                masterGain.gain.value = 0.75; // ลด Master ลงเล็กน้อยเพื่อสร้าง Headroom
+
+                percussionGain = audioCtx.createGain();
+                percussionGain.gain.value = 0.55; // ลดความดังฉิ่งฉับลงนิดหน่อยเพื่อไม่ให้กลบเสียงโน้ต
+
+                compressor.connect(masterGain);
+                masterGain.connect(audioCtx.destination);
+                percussionGain.connect(compressor); // 💡 ส่งเสียงฉิ่งฉับเข้า Compressor ด้วย
             }
-
-            const AudioContext = window.AudioContext || window.webkitAudioContext;
-            audioCtx = new AudioContext();
-
-            // สร้าง Compressor กันเสียงแตก (Chrome)
-            compressor = audioCtx.createDynamicsCompressor();
-            compressor.threshold.value = -10;
-            compressor.ratio.value = 12;
-            compressor.attack.value = 0;
-            compressor.release.value = 0.25;
-
-            // สร้าง Master Gain
-            masterGain = audioCtx.createGain();
-            masterGain.gain.value = 0.8;
-
-            compressor.connect(masterGain);
-            masterGain.connect(audioCtx.destination);
-
-            // 💡 ทริคเจาะเกราะ Safari: สั่งสร้างและเล่นเสียงว่าง 1 มิลลิวินาที แบบ Synchronous ทันทีที่แตะจอ
-            const osc = audioCtx.createOscillator();
-            const silentGain = audioCtx.createGain();
-            silentGain.gain.value = 0;
-            osc.connect(silentGain);
-            silentGain.connect(audioCtx.destination);
-            osc.start(0);
-            osc.stop(0.01);
         }
 
-        // ผูก Event Listener แบบ Global สกัดทุกการคลิกและการแตะเพื่อกระชากการ์ดเสียงให้ตื่นเสมอ
-        ['mousedown', 'touchstart', 'keydown'].forEach(event => {
-            document.addEventListener(event, ensureAudioContext, { once: true, capture: true });
-        });
+        document.body.addEventListener('touchstart', function() {
+            ensureAudioContext();
+            if (audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+        }, { once: true });
+        
+        document.body.addEventListener('click', function() {
+            ensureAudioContext();
+            if (audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+        }, { once: true });
 
         // =========================================================================
         let isReadOnlyMode = false;
@@ -1530,10 +1537,11 @@
 
             const attack = Math.min(0.12, duration * 0.3); 
             const release = Math.min(0.2, duration * 0.3); 
+            const maxFluteVolume = 0.6; // ปรับลดความดังสูงสุดของขลุ่ยลงเพื่อเผื่อพื้นที่ให้เสียงฉิ่ง
             
             gain.gain.setValueAtTime(0, time);
-            gain.gain.linearRampToValueAtTime(0.8, time + attack);
-            gain.gain.setValueAtTime(0.8, time + Math.max(attack, duration - release));
+            gain.gain.linearRampToValueAtTime(maxFluteVolume, time + attack);
+            gain.gain.setValueAtTime(maxFluteVolume, time + Math.max(attack, duration - release));
             gain.gain.linearRampToValueAtTime(0, time + duration);
 
             osc1.connect(filter);
@@ -1576,9 +1584,8 @@
             }
         }
 
-        function playCurrentStep(exactPlayTime) {
-            const sliderValue = parseInt(document.getElementById('tempo-slider').value);
-            const bpm = sliderValue * 2; 
+        function playCurrentStep() {
+            const bpm = parseInt(document.getElementById('tempo-slider').value) * 2; 
             const baseDuration = 60.0 / bpm; 
 
             const slots = document.getElementsByClassName('note-slot');
@@ -1595,22 +1602,14 @@
                 noteText = noteEl.getAttribute('data-note');
             }
 
-            // 💡 หน่วงเวลาการเปลี่ยนสีตัวอ่าน (UI) ให้เกิดขึ้นพร้อมกับเวลาเสียงเป๊ะๆ
-            let uiWaitTime = (exactPlayTime - audioCtx.currentTime) * 1000;
-            if (uiWaitTime < 0) uiWaitTime = 0;
+            if (lastPlayingSlot) {
+                lastPlayingSlot.classList.remove('playing');
+            }
+            if (activeSlot) {
+                activeSlot.classList.add('playing');
+                lastPlayingSlot = activeSlot;
+            }
 
-            setTimeout(() => {
-                if (!isPlaying) return;
-                if (lastPlayingSlot) {
-                    lastPlayingSlot.classList.remove('playing');
-                }
-                if (activeSlot) {
-                    activeSlot.classList.add('playing');
-                    lastPlayingSlot = activeSlot;
-                }
-            }, uiWaitTime);
-
-            // 💡 ส่งเสียงขลุ่ยเข้าคิว
             if (noteText && thaiFrequencies[noteText]) {
                 let dashCount = 0;
                 for (let i = 1; i < currentTotalSlots; i++) {
@@ -1626,11 +1625,12 @@
                     }
                 }
                 
+                const playTime = audioCtx.currentTime + 0.03;
                 const totalDuration = baseDuration * (1 + dashCount);
-                playFluteSound(thaiFrequencies[noteText], exactPlayTime, totalDuration);
+                playFluteSound(thaiFrequencies[noteText], playTime, totalDuration);
             }
 
-            // 💡 ส่งเสียงฉิ่ง-ฉับเข้าคิว
+            const scheduleTimeChing = audioCtx.currentTime + 0.03;
             if (isChingActive) {
                 const rhythmType = document.getElementById('rhythm-select').value;
                 let playChing = false;
@@ -1650,20 +1650,20 @@
                 if (playChing && chingBuffer) {
                     const source = audioCtx.createBufferSource();
                     source.buffer = chingBuffer;
-                    source.connect(masterGain);
-                    source.start(exactPlayTime); 
+                    source.connect(percussionGain); // 💡 เปลี่ยนทางเชื่อมให้ผ่าน Compressor
+                    source.start(scheduleTimeChing); 
                     activeChingSource = source; 
                 }
 
                 if (playChap && chapBuffer) {
                     if (activeChingSource) {
-                        try { activeChingSource.stop(exactPlayTime); } catch(e) {}
+                        try { activeChingSource.stop(scheduleTimeChing); } catch(e) {}
                         activeChingSource = null;
                     }
                     const source = audioCtx.createBufferSource();
                     source.buffer = chapBuffer;
-                    source.connect(masterGain);
-                    source.start(exactPlayTime);
+                    source.connect(percussionGain); // 💡 เปลี่ยนทางเชื่อมให้ผ่าน Compressor
+                    source.start(scheduleTimeChing);
                 }
             }
         }
@@ -1671,35 +1671,14 @@
         function playNextStep() {
             if (!isPlaying) return;
 
-            // ระบบ Gatekeeper รอให้เสียงพร้อม
-            if (!audioCtx || audioCtx.state !== 'running' || !isAudioLoaded) {
-                metronomeTimerID = setTimeout(playNextStep, 50); 
-                return;
-            }
+            playCurrentStep();
 
             const sliderValue = parseInt(document.getElementById('tempo-slider').value);
             const bpm = sliderValue * 2;
-            const secondsPerBeat = 60.0 / bpm;
-
-            // 💡 1. สั่งเล่นโน้ตปัจจุบัน โดยส่ง "เวลาในอนาคตที่คำนวณไว้แล้ว" ไปให้
-            playCurrentStep(nextNoteTime);
+            const msPerBeat = (60.0 / bpm) * 1000;
 
             currentBeatStep++;
-
-            // 💡 2. บวกเวลาเป้าหมายสำหรับโน้ตตัวถัดไป
-            nextNoteTime += secondsPerBeat;
-
-            // 💡 3. คำนวณเวลาที่ต้องรอ (หักลบเวลาที่เบราว์เซอร์ทำงานอืดไปแล้ว)
-            let waitTime = (nextNoteTime - audioCtx.currentTime) * 1000;
-
-            // ป้องกันกรณีเบราว์เซอร์ค้างหนักจนเวลาติดลบ
-            if (waitTime < 0) {
-                waitTime = 0;
-                nextNoteTime = audioCtx.currentTime + 0.05; // รีเซ็ตนาฬิกาใหม่
-            }
-
-            // เรียกโน้ตตัวถัดไปตามเวลาที่ชดเชยแล้ว
-            metronomeTimerID = setTimeout(playNextStep, waitTime);
+            metronomeTimerID = setTimeout(playNextStep, msPerBeat);
         }
 
         const playBtn = document.getElementById('play-btn');
@@ -1710,7 +1689,9 @@
         const tempoValueDisplay = document.getElementById('tempo-value');
 
         playBtn.addEventListener('click', async () => {
-            ensureAudioContext();
+            if (!audioCtx) {
+                ensureAudioContext();
+            }
             if (audioCtx.state === 'suspended') {
                 await audioCtx.resume();
             }
@@ -1725,17 +1706,13 @@
             if (isPlaying) {
                 playBtn.innerHTML = `${pauseIcon} <span>หยุด</span>`;
                 playBtn.style.color = "#e53935"; 
-                
                 currentBeatStep = 0; 
-                // 💡 เซ็ตเวลาเริ่มต้นให้โน้ตตัวแรก (เผื่อเวลาประมวลผลไว้ 0.05 วิ)
-                nextNoteTime = audioCtx.currentTime + 0.05;
                 playNextStep(); 
             } else {
                 playBtn.innerHTML = `${playIcon} <span>เล่น</span>`;
                 playBtn.style.color = "#3a86ff";
                 
                 clearTimeout(metronomeTimerID); 
-                document.querySelectorAll('.note-slot').forEach(s => s.classList.remove('playing')); 
                 
                 if (lastPlayingSlot) {
                     lastPlayingSlot.classList.remove('playing');
@@ -1821,48 +1798,49 @@
             renderSavedSongs(); 
         };
 
+        // =========================================================================
+        // ระบบรักษาความปลอดภัยหน้าบ้าน (แนวทางที่ 1) และการสกัดคีย์ลัดตรวจสอบโค้ด
+        // =========================================================================
         document.addEventListener('contextmenu', function(event) {
             event.preventDefault();
         });
 
-        // 2. ป้องกันการกดเซฟรูปภาพและเสียงโดยตรงผ่านการลากวาง
         document.addEventListener('dragstart', function(event) {
             event.preventDefault();
         });
 
-        // 3. บล็อกปุ่ม F12 และชุดปุ่มลัดเจาะระบบ (Developer Tools) ทั้ง Windows และ macOS
         document.addEventListener('keydown', function(e) {
-            // บล็อกปุ่ม F12 (ทุก OS)
+            // บล็อกปุ่ม F12
             if (e.keyCode === 123) {
                 e.preventDefault();
                 return false;
             }
 
-            // บล็อก Ctrl+Shift+I (Windows/Linux) หรือ Cmd+Option+I (macOS) - เปิดหน้าต่างตรวจสอบโค้ด
+            // บล็อก Ctrl+Shift+I หรือ Cmd+Option+I
             if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.keyCode === 73) {
                 e.preventDefault();
                 return false;
             }
 
-            // บล็อก Ctrl+Shift+C (Windows/Linux) หรือ Cmd+Option+C (macOS) - เลือกองค์ประกอบบนหน้าจอ
+            // บล็อก Ctrl+Shift+C หรือ Cmd+Option+C
             if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.keyCode === 67) {
                 e.preventDefault();
                 return false;
             }
 
-            // บล็อก Ctrl+Shift+J (Windows/Linux) หรือ Cmd+Option+J (macOS) - เปิดหน้าต่าง Console
+            // บล็อก Ctrl+Shift+J หรือ Cmd+Option+J
             if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.keyCode === 74) {
                 e.preventDefault();
                 return false;
             }
 
-            // บล็อก Ctrl+U (Windows/Linux) หรือ Cmd+Option+U (macOS) - ดูซอร์สโค้ดดิบ (View Source)
+            // บล็อก Ctrl+U หรือ Cmd+Option+U
             if ((e.ctrlKey || e.metaKey) && e.keyCode === 85) {
                 e.preventDefault();
                 return false;
             }
 
-            // บล็อก Ctrl+S (Windows/Linux) หรือ Cmd+S (macOS) - สั่งบันทึกหน้าเว็บลงเครื่องคอมพิวเตอร์
+            // บล็อก Ctrl+S หรือ Cmd+S
             if ((e.ctrlKey || e.metaKey) && e.keyCode === 83) {
                 e.preventDefault();
                 return false;
