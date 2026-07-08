@@ -437,7 +437,7 @@
             transform: translateY(-1px);
         }
 
-        .ching-icon-container {
+        .instrument-icon-container {
             position: relative;
             display: inline-flex;
             align-items: center;
@@ -445,7 +445,7 @@
             width: 32px;
             height: 32px;
         }
-        .ching-icon {
+        .instrument-icon {
             width: 200%;
             height: 200%;
             object-fit: contain;
@@ -464,10 +464,10 @@
             box-shadow: 0 0 3px rgba(0,0,0,0.2);
             z-index: 2;
         }
-        .ching-icon-container.muted .muted-slash {
+        .instrument-icon-container.muted .muted-slash {
             display: block; 
         }
-        .ching-icon-container.muted .ching-icon {
+        .instrument-icon-container.muted .instrument-icon {
             opacity: 0.5; 
         }
 
@@ -740,13 +740,23 @@
         </button>
         
         <div style="display: flex; align-items: center; gap: 30px; padding: 0 10px;">
-            <button class="action-btn" id="ching-toggle-btn">
-                <div class="ching-icon-container muted" id="ching-icon-wrapper">
-                    <img src="ching.png" alt="ฉิ่ง" class="ching-icon" onerror="this.outerHTML='<span style=\'font-size: 24px;\'>🛎️</span>'">
-                    <div class="muted-slash" id="ching-slash"></div>
-                </div>
-                <span id="ching-status-text" style="min-width: 45px; text-align: left; margin-left: 8px;">ปิด</span>
-            </button>
+            <div style="display: flex; flex-direction: column; align-items: flex-start; gap: 15px;">
+                <button class="action-btn" id="flute-toggle-btn">
+                    <div class="instrument-icon-container" id="flute-icon-wrapper">
+                        <img src="flute.png" alt="ขลุ่ย" class="instrument-icon" onerror="this.outerHTML='<span style=\'font-size: 24px;\'>🪈</span>'">
+                        <div class="muted-slash" id="flute-slash"></div>
+                    </div>
+                    <span id="flute-status-text" style="min-width: 45px; text-align: left; margin-left: 8px;">เปิด</span>
+                </button>
+                
+                <button class="action-btn" id="ching-toggle-btn">
+                    <div class="instrument-icon-container muted" id="ching-icon-wrapper">
+                        <img src="ching.png" alt="ฉิ่ง" class="instrument-icon" onerror="this.outerHTML='<span style=\'font-size: 24px;\'>🛎️</span>'">
+                        <div class="muted-slash" id="ching-slash"></div>
+                    </div>
+                    <span id="ching-status-text" style="min-width: 45px; text-align: left; margin-left: 8px;">ปิด</span>
+                </button>
+            </div>
             
             <div class="control-group">
                 <span class="control-label">อัตราจังหวะ</span>
@@ -1500,6 +1510,7 @@
         
         let isPlaying = false; 
         let isChingActive = false; 
+        let isFluteActive = true; 
         
         let activeChingSource = null;
         let activeFluteSources = []; 
@@ -1535,9 +1546,10 @@
             const osc2Gain = audioCtx.createGain();
             osc2Gain.gain.value = 0.4; 
 
+            // กลับมาใช้ Attack 0.12 เพื่อให้เสียงเป่าขลุ่ยนุ่มนวลเป็นธรรมชาติเหมือนเดิม
             const attack = Math.min(0.12, duration * 0.3); 
             const release = Math.min(0.2, duration * 0.3); 
-            const maxFluteVolume = 0.6; // ปรับลดความดังสูงสุดของขลุ่ยลงเพื่อเผื่อพื้นที่ให้เสียงฉิ่ง
+            const maxFluteVolume = 0.6; 
             
             gain.gain.setValueAtTime(0, time);
             gain.gain.linearRampToValueAtTime(maxFluteVolume, time + attack);
@@ -1602,6 +1614,7 @@
                 noteText = noteEl.getAttribute('data-note');
             }
 
+            // ไฮไลต์สีเหลืองทำงานทันทีตามปกติ (ลบการหน่วงเวลาออก)
             if (lastPlayingSlot) {
                 lastPlayingSlot.classList.remove('playing');
             }
@@ -1625,9 +1638,12 @@
                     }
                 }
                 
+                // ใช้การกะเวลาแบบเสถียรดั้งเดิม
                 const playTime = audioCtx.currentTime + 0.03;
                 const totalDuration = baseDuration * (1 + dashCount);
-                playFluteSound(thaiFrequencies[noteText], playTime, totalDuration);
+                if (isFluteActive) {
+                    playFluteSound(thaiFrequencies[noteText], playTime, totalDuration);
+                }
             }
 
             const scheduleTimeChing = audioCtx.currentTime + 0.03;
@@ -1650,7 +1666,7 @@
                 if (playChing && chingBuffer) {
                     const source = audioCtx.createBufferSource();
                     source.buffer = chingBuffer;
-                    source.connect(percussionGain); // 💡 เปลี่ยนทางเชื่อมให้ผ่าน Compressor
+                    source.connect(percussionGain);
                     source.start(scheduleTimeChing); 
                     activeChingSource = source; 
                 }
@@ -1662,7 +1678,7 @@
                     }
                     const source = audioCtx.createBufferSource();
                     source.buffer = chapBuffer;
-                    source.connect(percussionGain); // 💡 เปลี่ยนทางเชื่อมให้ผ่าน Compressor
+                    source.connect(percussionGain);
                     source.start(scheduleTimeChing);
                 }
             }
@@ -1685,6 +1701,9 @@
         const chingToggleBtn = document.getElementById('ching-toggle-btn');
         const chingStatusText = document.getElementById('ching-status-text');
         const chingIconWrapper = document.getElementById('ching-icon-wrapper');
+        const fluteToggleBtn = document.getElementById('flute-toggle-btn');
+        const fluteStatusText = document.getElementById('flute-status-text');
+        const fluteIconWrapper = document.getElementById('flute-icon-wrapper');
         const tempoSlider = document.getElementById('tempo-slider');
         const tempoValueDisplay = document.getElementById('tempo-value');
 
@@ -1748,6 +1767,24 @@
             } else {
                 chingStatusText.innerText = 'ปิด';
                 chingIconWrapper.classList.add('muted');
+            }
+        });
+
+        fluteToggleBtn.addEventListener('click', async () => {
+            if (!audioCtx) {
+                ensureAudioContext();
+            }
+            if (audioCtx.state === 'suspended') {
+                await audioCtx.resume();
+            }
+
+            isFluteActive = !isFluteActive;
+            if (isFluteActive) {
+                fluteStatusText.innerText = 'เปิด';
+                fluteIconWrapper.classList.remove('muted');
+            } else {
+                fluteStatusText.innerText = 'ปิด';
+                fluteIconWrapper.classList.add('muted');
             }
         });
 
